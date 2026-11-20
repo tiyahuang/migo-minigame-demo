@@ -76,7 +76,7 @@
     text-shadow: 0 4px 18px rgba(20,10,60,.45); display: inline-block; }
   .num.pop { animation: pop .38s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
-  .header { position: absolute; left: 0; top: 0; width: 390px; height: 116px; z-index: 6; pointer-events: none; }
+  .header { position: absolute; left: 0; top: 0; width: 390px; height: 116px; z-index: 6; pointer-events: none; transition: opacity .3s; }
   .tip { position: absolute; left: 0; right: 0; bottom: calc(34px + var(--cropB, 0px)); text-align: center; font-size: 13px; color: rgba(255,255,255,.75);
     z-index: 6; pointer-events: none; transition: opacity .4s; }
   .end { position: absolute; left: 0; right: 0; bottom: 70px; z-index: 7; text-align: center; opacity: 0; transform: translateY(12px);
@@ -443,6 +443,7 @@ function splash(n) {
 
 function setPhase(p) { S.phase = p; S.pt = 0; if (p !== 'water') document.getElementById('tip').style.opacity = 0; }
 
+const headerEl = document.querySelector('.header');
 function restart() {
   setPhase('water');
   Object.assign(S, { count: P.total.v, level: SURF0, vel: 0, target: SURF0, energy: 0, wobble: 0, shakeT: 0 });
@@ -615,6 +616,8 @@ function step(dt) {
   const done = shakesDone();
   migo.dataset.e = (ph === 'rumble' || done >= P.expr3At.v) ? '3' : done >= P.expr2At.v ? '2' : '1';
 
+  // 噴泉那段 Migo 停在畫面最上緣，會被 header（假狀態列＋返回／首頁圖示）蓋住：這段先把 header 淡出
+  headerEl.style.opacity = (ph === 'launch' || ph === 'hold' || ph === 'exit') ? 0 : 1;
   const still = ph === 'launch' || ph === 'hold' || ph === 'result';
   const s = still ? 0 : P.squash.v / 100 + 0.05 * S.wobble, v = Math.cos(fo.bobPhase);
   migo.style.transform = `scale(${(1 + v * s * 0.5).toFixed(4)}, ${(1 - v * s * 0.5).toFixed(4)})`;
