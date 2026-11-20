@@ -378,6 +378,21 @@ function drawSteam(ctx, s) {
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(s.x, s.y, rr * 0.8, rr * 1.5, Math.sin(S.t * 0.6 + s.ph) * 0.25, 0, TAU); ctx.fill();
 }
+function drawRing(ctx, r) {
+const k = r.life / (r.max || 0.6);
+    if (r.thick) {                                       // 濃稠的泥漿環：粗、慢、帶亮邊
+      const rr = r.r * (1 + (1 - k) * (r.exp || 2.1));
+      ctx.strokeStyle = `rgba(150,232,228,${0.85 * k})`; ctx.lineWidth = (3.5 + 8 * k) * r.s;
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = `rgba(240,255,255,${0.45 * k})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(r.x, r.y - 1.5 * r.s, rr, rr * 0.28, 0, Math.PI, TAU); ctx.stroke();
+    } else {
+      const rr = r.r * (1 + (1 - k) * 2.2);
+      ctx.strokeStyle = `rgba(235,255,255,${0.7 * k})`; ctx.lineWidth = 1.5 * r.s;
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); ctx.stroke();
+    }
+  
+}
 function drawLake() {
   back.clearRect(0, 0, W, H); front.clearRect(0, 0, W, H);
   // 浮島四周的漣漪：跟著浮島走，也順便蓋住底下補過的地方
@@ -397,21 +412,16 @@ function drawLake() {
   }
   back.restore();
   for (const s of steams) if (!s.front) drawSteam(back, s);
-  for (const r of rings) {
-    const k = r.life / (r.max || 0.6);
-    if (r.thick) {                                       // 濃稠的泥漿環：粗、慢、帶亮邊
-      const rr = r.r * (1 + (1 - k) * (r.exp || 2.1));
-      back.strokeStyle = `rgba(150,232,228,${0.85 * k})`; back.lineWidth = (3.5 + 8 * k) * r.s;
-      back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
-      back.strokeStyle = `rgba(240,255,255,${0.45 * k})`; back.lineWidth = 1;
-      back.beginPath(); back.ellipse(r.x, r.y - 1.5 * r.s, rr, rr * 0.28, 0, Math.PI, TAU); back.stroke();
-    } else {
-      const rr = r.r * (1 + (1 - k) * 2.2);
-      back.strokeStyle = `rgba(235,255,255,${0.7 * k})`; back.lineWidth = 1.5 * r.s;
-      back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
-    }
+  // 泡泡和破掉的漣漪依 y 排序：越下面（越靠近鏡頭）越後畫，疊在越前面
+  const items = [];
+  for (const r of rings) items.push({ y: r.y, ring: r });
+  for (const m of muds) items.push({ y: m.y, mud: m });
+  items.sort((p, q) => p.y - q.y);
+  for (const it of items) {
+    const ctx = it.y > ISLAND.y + 30 ? front : back;
+    it.ring ? drawRing(ctx, it.ring) : drawMud(ctx, it.mud);
   }
-  for (const m of muds) drawMud(m.y > ISLAND.y + 30 ? front : back, m);
+
 
 
   for (const d of drops) d.goo ? drawGoo(front, d) : glow(front, d.x, d.y, d.r, 0.85);
