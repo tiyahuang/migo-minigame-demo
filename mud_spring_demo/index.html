@@ -36,7 +36,7 @@
   /* 表情：跟 B 版同一套圖（半瞇眼 / 暈眼），依 Migo 身體外框換算（A 版身體大 1.1 倍） */
   .migo-e2 { left: 114px; top: 386px; width: 159px; height: 155.1px; display: none; }
   .migo-e3 { left: 106.3px; top: 377.2px; width: 179.9px; height: 176.6px; display: none; }
-  .raft[data-e="2"] .migo-calm, .raft[data-e="3"] .migo-calm { visibility: hidden; }
+  /* 身體一律用原本的 migo_calm（不變色），只把 B 版表情的臉罩疊上去 */
   .raft[data-e="2"] .migo-e2, .raft[data-e="3"] .migo-e3 { display: block; }
   .soft-shadow { position: absolute; left: 100px; top: 517px; width: 188px; height: 36px; border-radius: 50%;   /* 放在 Migo 腳底（身體底 y≈540），比身體寬一點才看得到 */
     background: radial-gradient(ellipse at center, rgba(100,25,95,.5) 0%, rgba(100,25,95,.3) 45%, rgba(100,25,95,0) 72%); filter: blur(3px); }
@@ -163,8 +163,8 @@
         <img class="island" src="assets/island.png" alt="">
         <div class="soft-shadow"></div>
         <img class="migo-calm" id="migoCalm" src="assets/migo_calm.png" alt="Migo">
-        <img class="migo-e2" src="assets/migo_e2.png" alt="">
-        <img class="migo-e3" src="assets/migo_e3.png" alt="">
+        <img class="migo-e2" src="assets/face_e2.png" alt="">
+        <img class="migo-e3" src="assets/face_e3.png" alt="">
       </div>
       <canvas id="lakeFront"></canvas>
       <img class="fg-mound" src="assets/fg_mound.png" alt="">
