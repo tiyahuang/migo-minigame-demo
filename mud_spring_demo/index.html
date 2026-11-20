@@ -204,6 +204,8 @@ const P = {
   screenShake:{ g: 'shake', v: 6,   min: 0,   max: 16,  step: 1,    label: '畫面震動 (px)' },
   rumbleSec:  { g: 'erupt', v: 1.4, min: 0.2, max: 4,   step: 0.1,  label: '最後一下後瘋狂震動 (秒)' },
   rumbleMax:  { g: 'erupt', v: 16,  min: 0,   max: 30,  step: 1,    label: '瘋狂震動最大幅度 (px)' },
+  ending:     { g: 'erupt', v: 0,   min: 0,   max: 1,   step: 1,    label: '結尾：0 = 飛出畫面、1 = 推近成大特寫' },
+  outSec:     { g: 'erupt', v: 0.8, min: 0.3, max: 2,   step: 0.05, label: '飛出畫面 (秒)' },
   flySec:     { g: 'erupt', v: 0.5, min: 0.2, max: 2,   step: 0.05, label: 'Migo 被噴飛 (秒)' },
   pushSec:    { g: 'erupt', v: 0.75, min: 0.3, max: 3,  step: 0.05, label: '鏡頭推近 (秒，跟噴飛重疊)' },
   hold3Sec:   { g: 'erupt', v: 0.6, min: 0.1, max: 4,   step: 0.1,  label: '推近後停留 (秒)' },
@@ -525,7 +527,22 @@ function step(dt) {
     drawLake();
   }
 
-  else if (ph === 'fly') {
+  else if (ph === 'fly' && P.ending.v === 0) {
+    // 結尾 0：Migo 從浮島被噴起來，邊轉邊往上衝出畫面頂端；鏡頭同時推近噴泉
+    flash.style.opacity = (0.9 * (1 - clamp01(S.pt / 0.3))).toFixed(3);
+    const k = clamp01(S.pt / P.outSec.v);
+    const ey = 1 - (1 - k) * (1 - k);                  // 一開始最快、往上慢慢減速，但終點在畫面外
+    const ep = easeInOut(clamp01(S.pt / (P.outSec.v + 0.25)));
+    setCam({ x: lerp(CAM2.x, CAM3.x, ep), y: lerp(CAM2.y, CAM3.y, ep), w: lerp(CAM2.w, CAM3.w, ep) });
+    // dizzy 元素的中心在 (132,171.5)：從浮島 (190,500) 出發，飛到畫面左上外 (95,-260)
+    const cx = lerp(ISLAND.x, 95, ey), cy = lerp(500, -260, ey);
+    dizzy.style.transform = `translate(${(cx - 132).toFixed(1)}px, ${(cy - 171.5).toFixed(1)}px) rotate(${lerp(-60, -620, ey).toFixed(1)}deg) scale(${lerp(0.55, 0.95, ey).toFixed(3)})`;
+    dizzy.style.opacity = 1; ko.style.opacity = 0;
+    S.shakeT = 0.35; S.shakeK = 12 * (1 - k);
+    geyserSpray(dt, 1 - k * 0.5);
+    if (S.pt >= P.outSec.v + 0.25) { gfx.clearRect(0, 0, W, H); setPhase('hold3'); }
+  }
+  else if (ph === 'fly') {                    // 結尾 1：推近成大特寫
     // 第 2 → 3 張一個連續動作：Migo 一被拋飛就是打叉眼，飛到半空時鏡頭已經開始推近，中間不停頓
     flash.style.opacity = (0.9 * (1 - clamp01(S.pt / 0.3))).toFixed(3);
     const F = P.flySec.v, pStart = F * 0.55, Pd = P.pushSec.v;
