@@ -494,7 +494,9 @@ function step(dt) {
   if (S.shakeT > 0) {
     S.shakeT -= dt;
     const k = S.shakeK * Math.max(S.shakeT / 0.35, 0.3);
-    stage.style.transform = `translate(${((Math.random() - 0.5) * 2 * k).toFixed(1)}px, ${((Math.random() - 0.5) * 2 * k).toFixed(1)}px)`;
+    // 震動時同時放大一點，放大量剛好蓋住位移，邊緣就不會露出底色
+    const zs = 1 + (2 * k + 2) / 390;
+    stage.style.transform = `translate(${((Math.random() - 0.5) * 2 * k).toFixed(1)}px, ${((Math.random() - 0.5) * 2 * k).toFixed(1)}px) scale(${zs.toFixed(4)})`;
   } else stage.style.transform = '';
 }
 
