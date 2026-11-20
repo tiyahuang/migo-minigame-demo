@@ -712,7 +712,7 @@ restart();
   phone.appendChild(hit);
   window.addEventListener('resize', fit);
   window.addEventListener('load', fit);
-  setOpen(!new URLSearchParams(location.search).has('play'));   // 預設打開；網址加 ?play 則先收起來
+  setOpen(new URLSearchParams(location.search).has('dev'));   // 預設收起；網址加 ?dev 則一進來就打開
 })();
 </script>
 
