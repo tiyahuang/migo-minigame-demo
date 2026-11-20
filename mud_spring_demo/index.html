@@ -389,18 +389,6 @@ function drawLake() {
   }
   for (const m of muds) drawMud(m.y > ISLAND.y + 30 ? front : back, m);
 
-  // 浮島前緣的泥漿：蓋住吃水線，讓浮島看起來一半沉在泥漿裡
-  const wl = WATERLINE + S.ry;
-  front.save();
-  const lg = front.createLinearGradient(0, wl - 7, 0, wl + 16);
-  lg.addColorStop(0, 'rgba(150,232,230,0)');
-  lg.addColorStop(0.35, 'rgba(150,232,230,0.85)');
-  lg.addColorStop(1, 'rgba(130,222,224,0.9)');
-  front.fillStyle = lg;
-  front.beginPath(); front.ellipse(ix, wl, 132, 15, 0, 0, Math.PI); front.lineTo(ix - 132, wl - 7); front.lineTo(ix + 132, wl - 7); front.closePath(); front.fill();
-  front.strokeStyle = 'rgba(240,255,255,0.75)'; front.lineWidth = 1.6;
-  front.beginPath(); front.ellipse(ix, wl - 1, 128, 12, 0, 0.12, Math.PI - 0.12); front.stroke();
-  front.restore();
 
   for (const d of drops) d.goo ? drawGoo(front, d) : glow(front, d.x, d.y, d.r, 0.85);
   for (const s of steams) if (s.front) drawSteam(front, s);
