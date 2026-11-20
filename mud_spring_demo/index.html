@@ -681,9 +681,8 @@ restart();
       phone.style.borderRadius = s < 1 ? '0' : '';
       return;
     }
-    // 手機：等比例放大到撐滿整個瀏覽器，多出來的裁掉（至少保留 350 寬、560 高，結算卡片和數字一定看得到）
-    let s = Math.max(vw / 390, vh / 844);
-    s = Math.min(s, vw / 350, vh / 560);
+    // 手機：等比例縮放、不裁切，長或寬其中一邊剛好撐滿瀏覽器，畫面置中
+    const s = Math.min(vw / 390, vh / 844);
     const exW = Math.max(0, 390 - vw / s), exH = Math.max(0, 844 - vh / s);
     const cropL = exW / 2, cropT = Math.min(exH, 110), cropB = exH - cropT;   // 先裁上面的假狀態列／header，剩下才裁下面
     const offX = Math.max(0, (vw - 390 * s) / 2), offY = Math.max(0, (vh - 844 * s) / 2);
