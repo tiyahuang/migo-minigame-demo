@@ -33,6 +33,11 @@
   .bg-calm, .fg-mound { left: -90.5px; top: 0; width: 571.3px; height: 857px; }   /* 前景土丘：同一張原圖切出來，疊在泡泡上面 */
   .migo-calm { left: 8px; top: 241px; width: 373px; height: 373px; }      /* 含環境光，比對設計稿定位（硬邊陰影已去掉） */
   /* Migo 的地面陰影：柔和、會暈開（位置照 Figma MIGO ground shadow） */
+  /* 表情：跟 B 版同一套圖（半瞇眼 / 暈眼），依 Migo 身體外框換算（A 版身體大 1.1 倍） */
+  .migo-e2 { left: 114px; top: 386px; width: 159px; height: 155.1px; display: none; }
+  .migo-e3 { left: 106.3px; top: 377.2px; width: 179.9px; height: 176.6px; display: none; }
+  .raft[data-e="2"] .migo-calm, .raft[data-e="3"] .migo-calm { visibility: hidden; }
+  .raft[data-e="2"] .migo-e2, .raft[data-e="3"] .migo-e3 { display: block; }
   .soft-shadow { position: absolute; left: 100px; top: 517px; width: 188px; height: 36px; border-radius: 50%;   /* 放在 Migo 腳底（身體底 y≈540），比身體寬一點才看得到 */
     background: radial-gradient(ellipse at center, rgba(100,25,95,.5) 0%, rgba(100,25,95,.3) 45%, rgba(100,25,95,0) 72%); filter: blur(3px); }
 
@@ -158,6 +163,8 @@
         <img class="island" src="assets/island.png" alt="">
         <div class="soft-shadow"></div>
         <img class="migo-calm" id="migoCalm" src="assets/migo_calm.png" alt="Migo">
+        <img class="migo-e2" src="assets/migo_e2.png" alt="">
+        <img class="migo-e3" src="assets/migo_e3.png" alt="">
       </div>
       <canvas id="lakeFront"></canvas>
       <img class="fg-mound" src="assets/fg_mound.png" alt="">
@@ -219,6 +226,8 @@ const P = {
   steam:      { g: 'shake', v: 9,   min: 0,   max: 20,  step: 1,    label: '冒煙量（越搖越多）' },
   bubbleRate: { g: 'shake', v: 6,   min: 0,   max: 30,  step: 1,    label: '湖面冒泡頻率（越搖越多）' },
   burst:      { g: 'shake', v: 5,   min: 0,   max: 20,  step: 1,    label: '每搖一下冒出的泥漿泡' },
+  expr2At:    { g: 'shake', v: 4,   min: 1,   max: 30,  step: 1,    label: '搖到第幾下換半瞇眼' },
+  expr3At:    { g: 'shake', v: 8,   min: 1,   max: 30,  step: 1,    label: '搖到第幾下換暈眼' },
   screenShake:{ g: 'shake', v: 6,   min: 0,   max: 16,  step: 1,    label: '畫面震動 (px)' },
   rumbleSec:  { g: 'erupt', v: 1.4, min: 0.2, max: 4,   step: 0.1,  label: '最後一下後瘋狂震動 (秒)' },
   rumbleMax:  { g: 'erupt', v: 16,  min: 0,   max: 30,  step: 1,    label: '瘋狂震動最大幅度 (px)' },
@@ -507,11 +516,14 @@ function stepParticles(dt) {
   }
 }
 
+const raftEl = document.getElementById('raft');
 function step(dt) {
   S.t += dt; S.pt += dt;
   const ph = S.phase, p = progress();
 
   if (ph === 'lake' || ph === 'rumble') {
+    const done = shakesDone();              // 表情跟 B 版一樣：開心 → 半瞇眼 → 暈眼（瘋狂震動時一定是暈眼）
+    raftEl.dataset.e = (ph === 'rumble' || done >= P.expr3At.v) ? '3' : done >= P.expr2At.v ? '2' : '1';
     let rk = 0;
     if (ph === 'rumble') {                     // 瘋狂震動：泥漿狂滾、浮島東倒西歪
       rk = clamp01(S.pt / P.rumbleSec.v);
