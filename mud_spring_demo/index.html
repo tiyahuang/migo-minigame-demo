@@ -626,7 +626,14 @@ document.getElementById('shakeBtn').onclick = shake;
 document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); shake(); } });
 document.getElementById('restart').onclick = restart;
 // 結算頁剛出現時，連點過來的那一下不要誤按到 Play again（不然會直接重開、計數跳回 1）
-document.getElementById('resultReplay').onclick = () => { if (S.phase === 'result' && S.pt < 0.8) return; restart(); };
+// 記錄每一下點擊的時間：連點中的那幾下不算「按 Play again」
+let lastTapAt = 0, prevTapAt = 0;
+document.getElementById('phone').addEventListener('pointerdown', () => { prevTapAt = lastTapAt; lastTapAt = performance.now(); }, true);
+document.getElementById('resultReplay').onclick = () => {
+  if (S.phase === 'result' && S.pt < 1.2) return;            // 結算頁剛出現：還在連點的手指不要直接重開
+  if (performance.now() - prevTapAt < 400) return;           // 跟上一下間隔太短 = 還在連點，忽略；停下來再點一下才重開
+  restart();
+};
 document.getElementById('skip').onclick = skipToErupt;
 document.getElementById('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '播放' : '暫停'; };
 document.getElementById('reset').onclick = () => {
