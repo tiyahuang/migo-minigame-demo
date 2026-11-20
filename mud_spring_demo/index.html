@@ -363,10 +363,13 @@ function drawLake() {
   // 浮島四周的漣漪：跟著浮島走，也順便蓋住底下補過的地方
   const ix = ISLAND.x + S.rx, iy = ISLAND.y + 30 + S.ry;
   back.save();
-  for (let i = 0; i < 3; i++) {
-    const k = ((S.t * 0.22 + i / 3) % 1);              // 慢慢往外擴
-    const rx = 128 + k * 70;
-    const a = 1 - k;                                   // 跟泡泡破掉的漣漪一樣：粗、濃稠、帶亮邊
+  // 一次一圈：從浮島中心冒出來往外擴，快消失時下一圈才出現
+  const RT = 3.0, RL = 3.5, base = S.t % RT;
+  for (const age of [base, base + RT]) {
+    if (age >= RL) continue;
+    const k = age / RL;
+    const rx = 15 + k * 200;
+    const a = Math.min(1, k / 0.12) * (1 - k);         // 跟泡泡破掉的漣漪一樣：粗、濃稠、帶亮邊
     back.strokeStyle = `rgba(150,232,228,${0.75 * a})`; back.lineWidth = 3 + 8 * a;
     back.beginPath(); back.ellipse(ix, iy, rx, rx * 0.24, 0, 0, TAU); back.stroke();
     back.strokeStyle = `rgba(240,255,255,${0.45 * a})`; back.lineWidth = 1;
@@ -408,7 +411,7 @@ function shake() {
   S.energy = 1;
   S.shakeT = 0.35; S.shakeK = P.screenShake.v;
   for (let i = 0; i < P.burst.v * (1 + p); i++) spawnMud(true);
-  rings.push({ x: ISLAND.x + S.rx, y: ISLAND.y + 30, r: 125, s: 1.2, life: 1.3, max: 1.3, thick: true, exp: 0.7 });   // 搖一下：浮島底下推出一圈濃稠的大漣漪
+  rings.push({ x: ISLAND.x + S.rx, y: ISLAND.y + 30, r: 30, s: 1.2, life: 1.3, max: 1.3, thick: true, exp: 5.5 });   // 搖一下：浮島底下推出一圈濃稠的大漣漪
   numEl.textContent = shakesDone();
   numEl.classList.remove('pop'); void numEl.offsetWidth; numEl.classList.add('pop');
   document.getElementById('tip').style.opacity = 0;
