@@ -31,7 +31,10 @@
   .island { left: 60.1px; top: 504.9px; width: 262.2px; height: 93.2px; }
   .island-reflection { left: 60.1px; top: 583px; width: 262.2px; height: 75.3px; }
   .bg-calm { left: -90.5px; top: 0; width: 571.3px; height: 857px; }
-  .migo-calm { left: 8px; top: 247px; width: 373px; height: 373px; }      /* 含陰影與環境光，比對設計稿定位 */
+  .migo-calm { left: 8px; top: 247px; width: 373px; height: 373px; }      /* 含環境光，比對設計稿定位（硬邊陰影已去掉） */
+  /* Migo 的地面陰影：柔和、會暈開（位置照 Figma MIGO ground shadow） */
+  .soft-shadow { position: absolute; left: 103.4px; top: 507px; width: 183.4px; height: 55px; border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(130,40,120,.36) 0%, rgba(130,40,120,.2) 42%, rgba(130,40,120,0) 72%); filter: blur(3px); }
 
   /* 第 2、3 張：噴發（同一張長圖，第 3 張是鏡頭推近） */
   #geyserScene, #resultScene { opacity: 0; }
@@ -135,6 +138,7 @@
       <div class="raft" id="raft">
         <img class="island-reflection" src="assets/island_reflection.png" alt="">
         <img class="island" src="assets/island.png" alt="">
+        <div class="soft-shadow"></div>
         <img class="migo-calm" id="migoCalm" src="assets/migo_calm.png" alt="Migo">
       </div>
       <canvas id="lakeFront"></canvas>
@@ -143,7 +147,7 @@
     <div class="scene" id="geyserScene">
       <div id="gcam"><img src="assets/bg_geyser.png" alt=""></div>
       <canvas id="geyserFx"></canvas>
-      <img id="dizzy" src="assets/migo_dizzy.png" alt="Migo">
+      <img id="dizzy" src="assets/migo_ko_small.png" alt="Migo">
       <img id="ko" src="assets/migo_ko_big.png" alt="Migo">
     </div>
     <!-- 第 4 張：結算（靜態） -->
@@ -190,8 +194,8 @@
 // ================= 可調參數 =================
 const P = {
   total:      { g: 'shake', v: 10,  min: 1,   max: 30,  step: 1,    label: '要搖幾下', restart: true },
-  driftMax:   { g: 'shake', v: 26,  min: 0,   max: 60,  step: 1,    label: '浮島左右飄動幅度 (px，越搖越大)' },
-  driftSec:   { g: 'shake', v: 6,   min: 2,   max: 14,  step: 0.5,  label: '浮島左右飄一趟 (秒，泥漿黏稠所以慢)' },
+  driftMax:   { g: 'shake', v: 38,  min: 0,   max: 80,  step: 1,    label: '搖晃時浮島被推遠的距離 (px)' },
+  tiltMax:    { g: 'shake', v: 4,   min: 0,   max: 15,  step: 0.5,  label: '浮島不穩的晃動角度 (°)' },
   bobAmp:     { g: 'shake', v: 3,   min: 0,   max: 12,  step: 0.5,  label: '浮島上下起伏 (px)' },
   rockKick:   { g: 'shake', v: 9,   min: 0,   max: 30,  step: 1,    label: '每搖一下浮島被推的力道' },
   steam:      { g: 'shake', v: 9,   min: 0,   max: 20,  step: 1,    label: '冒煙量（越搖越多）' },
@@ -200,10 +204,9 @@ const P = {
   screenShake:{ g: 'shake', v: 6,   min: 0,   max: 16,  step: 1,    label: '畫面震動 (px)' },
   rumbleSec:  { g: 'erupt', v: 1.4, min: 0.2, max: 4,   step: 0.1,  label: '最後一下後瘋狂震動 (秒)' },
   rumbleMax:  { g: 'erupt', v: 16,  min: 0,   max: 30,  step: 1,    label: '瘋狂震動最大幅度 (px)' },
-  flySec:     { g: 'erupt', v: 0.6, min: 0.2, max: 2,   step: 0.1,  label: 'Migo 被噴飛 (秒)' },
-  hold2Sec:   { g: 'erupt', v: 0.2, min: 0,   max: 3,   step: 0.1,  label: '噴飛後到推近前的停頓 (秒)' },
-  pushSec:    { g: 'erupt', v: 1.1, min: 0.3, max: 3,   step: 0.1,  label: '鏡頭推近 (秒)' },
-  hold3Sec:   { g: 'erupt', v: 1.2, min: 0.2, max: 4,   step: 0.1,  label: '推近後停留 (秒)' },
+  flySec:     { g: 'erupt', v: 0.5, min: 0.2, max: 2,   step: 0.05, label: 'Migo 被噴飛 (秒)' },
+  pushSec:    { g: 'erupt', v: 0.75, min: 0.3, max: 3,  step: 0.05, label: '鏡頭推近 (秒，跟噴飛重疊)' },
+  hold3Sec:   { g: 'erupt', v: 0.6, min: 0.1, max: 4,   step: 0.1,  label: '推近後停留 (秒)' },
 };
 const DEFAULTS = Object.fromEntries(Object.entries(P).map(([k, o]) => [k, o.v]));
 for (const [k, o] of Object.entries(P)) {
@@ -271,7 +274,7 @@ function spawnMud(big) {
     const x = 15 + Math.random() * 360, y = 495 + Math.random() * 300;
     // 大小有變化：大部分小顆，偶爾來一顆大的（大的鼓更久）
     const roll = Math.random();
-    const base = roll < 0.12 ? 34 + Math.random() * 22 : roll < 0.4 ? 18 + Math.random() * 12 : 6 + Math.random() * 10;
+    const base = roll < 0.15 ? 50 + Math.random() * 30 : roll < 0.45 ? 28 + Math.random() * 18 : 11 + Math.random() * 14;   // 整體再大一點
     const s = depth(y), rMax = base * (big ? 1.15 : 0.85) * s;
     // 整顆泡泡的底部都要在泥漿裡、也不要在浮島正下方
     if (!inLake(x - rMax, y) || !inLake(x + rMax, y) || !inLake(x, y + rMax * 0.3) || !inLake(x, y - 4)) continue;
@@ -295,7 +298,7 @@ function spawnSteam() {
 }
 function popMud(m) {
   // 濃稠的破法：一圈粗粗的泥漿環慢慢擴散，濺起少量、慢、不透明的泥漿團
-  rings.push({ x: m.x, y: m.y, r: m.rMax, s: m.s, life: 1.0, max: 1.0, thick: true });
+  rings.push({ x: m.x, y: m.y, r: m.rMax * 1.15, s: m.s, life: 1.4, max: 1.4, thick: true });   // 大圈、慢慢擴散
   const n = m.rMax > 14 ? 3 + (Math.random() * 2 | 0) : 1 + (Math.random() * 2 | 0);
   for (let i = 0; i < n; i++) {
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.4, sp = (45 + Math.random() * 55) * Math.sqrt(m.s) * (0.6 + m.rMax / 40);
@@ -376,8 +379,8 @@ function drawLake() {
   for (const r of rings) {
     const k = r.life / (r.max || 0.6);
     if (r.thick) {                                       // 濃稠的泥漿環：粗、慢、帶亮邊
-      const rr = r.r * (1 + (1 - k) * 1.3);
-      back.strokeStyle = `rgba(150,232,228,${0.85 * k})`; back.lineWidth = (2 + 5 * k) * r.s;
+      const rr = r.r * (1 + (1 - k) * 2.1);
+      back.strokeStyle = `rgba(150,232,228,${0.85 * k})`; back.lineWidth = (3.5 + 8 * k) * r.s;
       back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
       back.strokeStyle = `rgba(240,255,255,${0.45 * k})`; back.lineWidth = 1;
       back.beginPath(); back.ellipse(r.x, r.y - 1.5 * r.s, rr, rr * 0.28, 0, Math.PI, TAU); back.stroke();
@@ -401,6 +404,8 @@ function shake() {
   S.count--;
   const p = progress();
   S.pushV += (Math.random() < 0.5 ? -1 : 1) * P.rockKick.v * (0.6 + p) * 5;   // 浮島被推往左或右
+  S.rotV = (S.rotV || 0) + (Math.random() < 0.5 ? -1 : 1) * (35 + Math.random() * 35) * (0.6 + p);   // 被搖得歪一下
+  S.nextMove = 0;                                  // 馬上換一個新的飄動目標
   S.dipV += 25;
   S.energy = 1;
   S.shakeT = 0.35; S.shakeK = P.screenShake.v;
@@ -424,7 +429,7 @@ function setCam(c) {
 
 function restart() {
   setPhase('lake');
-  Object.assign(S, { count: P.total.v, push: 0, pushV: 0, dip: 0, dipV: 0, energy: 0, shakeT: 0, rx: 0, ry: 0 });
+  Object.assign(S, { count: P.total.v, push: 0, pushV: 0, dip: 0, dipV: 0, energy: 0, shakeT: 0, rx: 0, ry: 0, rot: 0, rotV: 0, target: 0, nextMove: 0 });
   muds.length = rings.length = drops.length = steams.length = 0;
   numEl.textContent = 0;
   hud.style.opacity = 1;
@@ -498,44 +503,49 @@ function step(dt) {
     S.steamAcc = (S.steamAcc || 0) + dt * P.steam.v * (0.5 + 1.5 * p + (ph === 'rumble' ? 2 : 0));
     while (S.steamAcc > 1) { S.steamAcc--; spawnSteam(); }
 
-    // 浮島：不傾斜，只在泥漿上左右慢慢飄、帶一點上下起伏（泥漿黏稠，動作慢）
-    const w = TAU / P.driftSec.v;
-    const amp = P.driftMax.v * (0.25 + 0.75 * p);
-    const drift = Math.sin(S.t * w) * amp + Math.sin(S.t * w * 1.7 + 1.3) * amp * 0.25;
-    S.pushV += (-S.push * 3 - S.pushV * 2.2) * dt;       // 被推之後慢慢回來
+    // 浮島：平常幾乎在原地、只有不穩地晃；被搖的時候才會被推著飄遠，飄的方向和停頓每次都不一樣
+    if (ph === 'rumble') S.energy = 1;
+    S.energy *= Math.exp(-dt * 0.45);                    // 搖完之後慢慢平靜下來
+    if ((S.nextMove = (S.nextMove ?? 0) - dt) <= 0) {
+      S.nextMove = 1.2 + Math.random() * 2.6;
+      S.target = Math.random() < 0.35 ? S.push            // 有時停著不動
+        : (Math.random() * 2 - 1) * P.driftMax.v * (0.1 + 0.9 * S.energy);
+    }
+    S.pushV += ((S.target ?? 0) - S.push) * 1.5 * dt - S.pushV * 2.0 * dt;   // 泥漿黏稠，慢慢飄過去
     S.push += S.pushV * dt;
+    S.push = Math.max(-P.driftMax.v * 1.3, Math.min(P.driftMax.v * 1.3, S.push));
     S.dipV += (-S.dip * 12 - S.dipV * 3) * dt; S.dip += S.dipV * dt;
-    S.rx = drift + S.push;
-    S.ry = Math.sin(S.t * w * 1.6) * P.bobAmp.v * (0.7 + 0.6 * p) + S.dip * 0.15;
-    raft.style.transform = `translate(${S.rx.toFixed(2)}px, ${S.ry.toFixed(2)}px)`;
+    // 不穩的晃動：幾個不同頻率疊在一起，越搖越晃
+    S.rotV = (S.rotV || 0) + (-(S.rot || 0) * 18 - S.rotV * 2.6) * dt; S.rot = (S.rot || 0) + S.rotV * dt;
+    const wob = (Math.sin(S.t * 2.1 + 0.3) * 0.55 + Math.sin(S.t * 3.3 + 1.1) * 0.3 + Math.sin(S.t * 5.3) * 0.15)
+      * P.tiltMax.v * (0.35 + 0.65 * S.energy + 0.3 * p);
+    S.rx = S.push;
+    S.ry = Math.sin(S.t * 1.9) * P.bobAmp.v * (0.5 + 0.8 * S.energy) + S.dip * 0.15;
+    raft.style.transform = `translate(${S.rx.toFixed(2)}px, ${S.ry.toFixed(2)}px) rotate(${(wob + S.rot).toFixed(2)}deg)`;
     drawLake();
   }
 
-  else if (ph === 'fly') {                    // 第 2 張：噴發，Migo 被噴飛到設計稿位置
-    flash.style.opacity = (0.9 * (1 - clamp01(S.pt / 0.35))).toFixed(3);
-    const k = clamp01(S.pt / P.flySec.v), e = easeOutBack(k);
-    // 從浮島位置（畫面下方）飛到 (32,72)
-    const sx = lerp(ISLAND.x - 132, 0, e), sy = lerp(ISLAND.y - 172, 0, e);
-    dizzy.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) rotate(${lerp(-200, 0, easeOutCubic(k)).toFixed(1)}deg) scale(${lerp(0.6, 1, easeOutCubic(k)).toFixed(3)})`;
-    S.shakeT = 0.35; S.shakeK = 12 * (1 - k);
-    geyserSpray(dt, 1 - k * 0.6);
-    if (k >= 1) setPhase('hold2');
-  } else if (ph === 'hold2') {                // 停在第 2 張（靜止）
-    S.shakeT = 0; gfx.clearRect(0, 0, W, H);
-    if (S.pt >= P.hold2Sec.v) setPhase('push');
-  } else if (ph === 'push') {
-    // 第 2 → 3 張是同一個連續鏡頭：鏡頭推近，暈眼 Migo 跟著放大移動到打叉眼 Migo 的位置，
-    // 兩張完全疊在一起時才交換，不會有換圖的感覺
-    const k = clamp01(S.pt / P.pushSec.v), e = easeInOut(k);
-    setCam({ x: lerp(CAM2.x, CAM3.x, e), y: lerp(CAM2.y, CAM3.y, e), w: lerp(CAM2.w, CAM3.w, e) });
-    // 暈眼框 (32,72) 200×199，中心 (132,171.5)；打叉眼整顆 (-96,62) 400×399，中心 (104,261.5)，大 2 倍
-    const tx = lerp(0, MORPH.dx, e), ty = lerp(0, MORPH.dy, e), sc = lerp(1, MORPH.s, e);
-    dizzy.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${sc.toFixed(4)})`;
+  else if (ph === 'fly') {
+    // 第 2 → 3 張一個連續動作：Migo 一被拋飛就是打叉眼，飛到半空時鏡頭已經開始推近，中間不停頓
+    flash.style.opacity = (0.9 * (1 - clamp01(S.pt / 0.3))).toFixed(3);
+    const F = P.flySec.v, pStart = F * 0.55, Pd = P.pushSec.v;
+    const kf = clamp01(S.pt / F), ef = easeOutCubic(kf);
+    const kp = clamp01((S.pt - pStart) / Pd), ep = easeInOut(kp);
+    // 噴飛：從浮島位置（畫面下方）轉著飛到 (32,72)
+    const sx = lerp(ISLAND.x - 132, 0, ef), sy = lerp(ISLAND.y - 172, 0, ef);
+    const rot = lerp(-220, 0, ef), fs = lerp(0.55, 1, ef);
+    // 推近：鏡頭推到第 3 張，Migo 跟著放大移到大特寫的位置
+    setCam({ x: lerp(CAM2.x, CAM3.x, ep), y: lerp(CAM2.y, CAM3.y, ep), w: lerp(CAM2.w, CAM3.w, ep) });
+    const tx = lerp(0, MORPH.dx, ep), ty = lerp(0, MORPH.dy, ep), sc = lerp(1, MORPH.s, ep);
+    dizzy.style.transform = `translate(${(sx + tx).toFixed(1)}px, ${(sy + ty).toFixed(1)}px) rotate(${rot.toFixed(1)}deg) scale(${(fs * sc).toFixed(4)})`;
     ko.style.transform = `translate(${(tx - MORPH.dx).toFixed(1)}px, ${(ty - MORPH.dy).toFixed(1)}px) scale(${(sc / MORPH.s).toFixed(4)})`;
-    const x = clamp01((k - 0.55) / 0.3);         // 後段、兩張重疊時才交換
+    // 小張和大特寫都是打叉眼，最後完全重疊時才交換（大特寫畫質比較好）
+    const x = clamp01((kp - 0.8) / 0.2);
     ko.style.opacity = x.toFixed(3);
     dizzy.style.opacity = (1 - x).toFixed(3);
-    if (k >= 1) setPhase('hold3');
+    S.shakeT = 0.35; S.shakeK = 12 * (1 - kf);
+    if (kp < 0.7) geyserSpray(dt, 1 - kf * 0.6); else gfx.clearRect(0, 0, W, H);
+    if (kp >= 1) setPhase('hold3');
   } else if (ph === 'hold3') {
     if (S.pt >= P.hold3Sec.v) {
       scene('geyser', 0); scene('result', 1); resultScene.classList.add('on');
@@ -639,7 +649,7 @@ restart();
   phone.appendChild(hit);
   window.addEventListener('resize', fit);
   window.addEventListener('load', fit);
-  setOpen(new URLSearchParams(location.search).has('dev'));
+  setOpen(!new URLSearchParams(location.search).has('play'));   // 預設打開；網址加 ?play 則先收起來
 })();
 </script>
 </body>
