@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migo 搖晃噴發測試</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #14122a; --panel: #1f1c3d; --text: #e8e6ff; --muted: #9a96c8; --accent: #8f7bff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: system-ui, "Noto Sans TC", sans-serif;
+    display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center; padding: 24px 16px; }
+
+  /* 390×844 手機畫面，座標照 Figma */
+  .phone { position: relative; width: 390px; height: 844px; overflow: hidden; border-radius: 28px; background: #0d0b2a;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); flex: none; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .stage { position: absolute; inset: -12px; }          /* 外擴一點，畫面震動時不露邊 */
+  .stage > * { position: absolute; left: 12px; top: 12px; width: 390px; height: 844px; }
+  .scene > img:first-child { position: absolute; left: 0; top: 0; width: 390px; height: 844px; }   /* 只套背景圖 */
+  canvas { pointer-events: none; }
+  .scene { will-change: transform, opacity; }
+  #fountainScene, #resultScene { opacity: 0; }
+  #fountainScene { overflow: hidden; width: 390px; height: 844px; }
+  /* 長圖在 Figma 的位置：x -110，寬 608 高 1088（1:1） */
+  #fcam { position: absolute; left: -110px; top: 0; width: 608px; height: 1088px; will-change: transform; }
+  #fcam > img:first-child { position: absolute; left: 0; top: 0; width: 608px; height: 1088px; }
+  /* Migo：畫面座標 (67, 0) → 長圖座標 (177, 0)，182×131 */
+  #fmigo { position: absolute; left: 177px; top: 0; width: 182px; height: 131px; will-change: transform; }
+
+  /* 結算頁：座標照 Figma frame 8007:27103 */
+  #resultScene { pointer-events: none; font-family: Inter, system-ui, sans-serif; text-align: center; }
+  #resultScene.on { pointer-events: auto; }
+  #resultScene > * { position: absolute; }
+  .r-bg { left: 0; top: 0; width: 390px; height: 844px; }
+  .r-island { left: 126.9px; top: 339.6px; width: 116px; height: 57px; }      /* Vector 53 */
+  .r-vivee { left: 76px; top: 232px; width: 168px; height: 169px; }           /* VIVEE：對齊設計稿截圖（Migo 本體在 128,276） */
+  .r-drip { left: 156.75px; top: 384.91px; width: 35px; height: 13px; }       /* Vector 54 */
+  .r-dot { border-radius: 50%; background: #8ff7ef; box-shadow: 0 0 6px #6ff3ea; }
+  .r-label { left: 39px; top: 149px; width: 312px; font-size: 15px; line-height: 19px; font-weight: 700; color: #fff; letter-spacing: .02em; }
+  .r-value { left: 0; width: 420px; top: 168px; font-size: 100px; line-height: 110px; font-weight: 900; letter-spacing: -.01em;
+    background: linear-gradient(180deg, #a9bbff 0%, #7f95f2 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .r-card { left: 24px; top: 431px; width: 342px; height: 196px; border-radius: 22px;
+    background: rgba(110, 125, 200, .22); border: 1px solid rgba(190, 200, 255, .22);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .r-card > * { position: absolute; }
+  .r-title { left: 0; right: 0; top: 24px; font-size: 21px; line-height: 28px; font-weight: 700; color: #fff; }
+  .r-copy { left: 25px; right: 25px; top: 58px; font-size: 14px; line-height: 20px; color: rgba(235,238,255,.82); }
+  .r-play { left: 69px; top: 123px; width: 140px; height: 48px; cursor: pointer; }
+  .r-share { left: 215px; top: 113px; width: 68px; height: 68px; }
+
+  .raft { transform-origin: 195px 730px; pointer-events: none; will-change: transform; }
+  .raft > img { position: absolute; }
+  /* 浮島中心對齊 Migo（VIVEE）中心 x=195 */
+  /* 由背景原圖 (608×1088) 裁切：原圖 x203 y918 250×66 → 畫面 213×56.2，再左移 20 對齊 Migo */
+  .island { left: 87.96px; top: 700.1px; width: 213px; height: 56.2px; }
+  /* 陰影：Figma 位置 (116, 703.9) 158.6×20 */
+  .shadow { left: 116px; top: 703.9px; width: 158.6px; height: 20px; }
+  /* Migo：PNG 有透明留白，本體在 (97,133)，對到 Figma (123.3, 579) */
+  .migo { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 195px 719px; }
+  .mx { position: absolute; display: none; }
+  .e1 { left: 26.3px; top: 446px; width: 340px; height: 340px; }          /* 第 1 張：開心圓眼（PNG 含留白） */
+  .e2 { left: 123.3px; top: 578px; width: 144.5px; height: 141px; }       /* 第 2 張：半瞇眼 */
+  .e3 { left: 116.3px; top: 570px; width: 163.5px; height: 160.5px; }     /* 第 3 張：暈眼 */
+  .migo[data-e="1"] .e1, .migo[data-e="2"] .e2, .migo[data-e="3"] .e3 { display: block; }
+
+  .flash { pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 15%, #ffffff 0%, #c9fff8 35%, rgba(140,240,255,.85) 70%, rgba(120,200,255,.7) 100%); }
+
+  .hud { position: absolute; left: 0; right: 0; top: 156px; height: 195px; text-align: center; pointer-events: none; z-index: 5;
+    font-family: Inter, "Arial Black", system-ui, sans-serif; }
+  .hud .title { margin-top: 2px; font-size: 18px; font-weight: 700; letter-spacing: .02em; color: #d9d6f5;
+    text-shadow: 0 1px 6px rgba(20,10,60,.45); }
+  .hud .num { margin-top: 2px; font-size: 104px; line-height: 1.12; font-weight: 900; color: #fff;
+    text-shadow: 0 4px 18px rgba(20,10,60,.45); display: inline-block; }
+  .num.pop { animation: pop .38s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .header { position: absolute; left: 0; top: 0; width: 390px; height: 116px; z-index: 6; pointer-events: none; }
+  .tip { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; font-size: 13px; color: rgba(255,255,255,.75);
+    z-index: 6; pointer-events: none; transition: opacity .4s; }
+  .end { position: absolute; left: 0; right: 0; bottom: 70px; z-index: 7; text-align: center; opacity: 0; transform: translateY(12px);
+    transition: .5s; pointer-events: none; font-family: Inter, system-ui, sans-serif; }
+  .end.show { opacity: 1; transform: none; pointer-events: auto; }
+  .end .msg { font-size: 22px; font-weight: 800; color: #fff; text-shadow: 0 2px 12px rgba(80,200,255,.6); margin-bottom: 14px; }
+  .end button { width: auto; padding: 12px 28px; border-radius: 999px; background: #7d6bff; font-size: 15px; font-weight: 700; }
+
+  .panel { width: 300px; background: var(--panel); border-radius: 16px; padding: 18px 18px 8px; max-height: 844px; overflow: auto; }
+  .panel h1 { font-size: 16px; margin: 0 0 4px; }
+  .panel h2 { font-size: 13px; margin: 18px 0 10px; color: var(--accent); }
+  .panel p { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+  .row { margin-bottom: 12px; }
+  .row label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .row label span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row input { width: 100%; accent-color: var(--accent); }
+  .btns { display: flex; gap: 8px; margin-bottom: 10px; }
+  button { flex: 1; background: #2c2858; color: var(--text); border: 0; border-radius: 10px; padding: 9px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #3a3570; }
+  button.primary { background: var(--accent); color: #fff; font-weight: 700; font-size: 15px; padding: 12px; }
+  button.primary:hover { background: #a08fff; }
+
+  @media (max-width: 760px) {
+    body { padding: 0; gap: 0; }
+    .phone { border-radius: 0; }
+    .panel { width: 100%; max-width: 390px; border-radius: 0; max-height: none; }
+  }
+
+  /* 公開模式：沒有 ?dev 時只顯示遊戲畫面，並縮放到剛好塞進螢幕 */
+  body:not(.dev) .panel { display: none; }
+  body:not(.dev) { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  body:not(.dev) .phone { flex: none; transform-origin: center center; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="stage" id="stage">
+    <div class="scene" id="caveScene">
+      <img src="assets/bg_noisland.png" alt="">
+    </div>
+    <!-- 噴泉頁：整張長圖（608×1088），鏡頭由下往上搖；Migo 位置照 Figma -->
+    <div class="scene" id="fountainScene">
+      <div id="fcam">
+        <img src="assets/fountain_long.png" alt="">
+        <img id="fmigo" src="assets/migo_fountain.png" alt="Migo">
+      </div>
+    </div>
+    <canvas id="back"></canvas>
+    <div class="raft" id="raft">
+      <img class="island" src="assets/island.png" alt="">
+      <img class="shadow" src="assets/shadow.png" alt="">
+      <!-- Migo 三種表情（照 Figma 第 1、2、3 張），依搖晃進度切換 -->
+      <div class="migo" id="migo" data-e="1">
+        <img class="mx e1" src="assets/migo_e1.png" alt="Migo">
+        <img class="mx e2" src="assets/migo_e2.png" alt="">
+        <img class="mx e3" src="assets/migo_e3.png" alt="">
+      </div>
+    </div>
+    <canvas id="water"></canvas><!-- 水在浮島前面：浮島下半部泡在水裡 -->
+    <canvas id="fx"></canvas>
+    <!-- 結算頁（靜態，照 Figma 8007:27103） -->
+    <div class="scene" id="resultScene">
+      <img class="r-bg" src="assets/final_bg.png" alt="">
+      <img class="r-island" src="assets/final_island.png" alt="">
+      <img class="r-vivee" src="assets/final_vivee.png" alt="Migo">
+      <div class="r-label">SECRET NUMBER</div>
+      <div class="r-value" id="resultNum">5</div>
+      <div class="r-card">
+        <div class="r-title">You set off the Pop!</div>
+        <div class="r-copy">It was <span id="resultShakes">5</span> shakes to Pop! Better luck next round.</div>
+        <img class="r-play" id="resultReplay" src="assets/btn_play.png" alt="Play again">
+        <img class="r-share" src="assets/btn_share.png" alt="Share">
+      </div>
+      <img class="r-drip" src="assets/final_drip.png" alt="">
+      <div class="r-dot" style="left:168px; top:401px; width:4px; height:5px"></div>
+      <div class="r-dot" style="left:176.36px; top:415.81px; width:2.62px; height:3.37px"></div>
+    </div>
+    <div class="flash" id="flash"></div>
+  </div>
+  <div class="hud" id="hud">
+    <div class="title">TOTAL SHAKES</div>
+    <div class="num" id="num">5</div>
+  </div>
+  <img class="header" src="assets/header.png" alt="">
+  <div class="tip" id="tip">點畫面 / 按空白鍵 = 搖一下</div>
+</div>
+
+<div class="panel">
+  <h1>搖晃 → 噴發測試</h1>
+  <p>點手機畫面、按空白鍵，或按下方按鈕來搖。滑桿可即時調整。</p>
+  <div class="btns"><button class="primary" id="shakeBtn">搖一下</button></div>
+  <div class="btns">
+    <button id="restart">重來</button>
+    <button id="skip">直接看噴發</button>
+    <button id="pause">暫停</button>
+  </div>
+  <div class="btns"><button id="motion">啟用手機搖晃</button></div>
+  <h2>水位</h2>
+  <div id="sliders-water"></div>
+  <h2>浮島 + Migo 漂浮</h2>
+  <div id="sliders-float"></div>
+  <h2>噴發</h2>
+  <div id="sliders-erupt"></div>
+  <div class="btns"><button id="reset">參數重設</button></div>
+</div>
+
+<script>
+// ================= 可調參數 =================
+const P = {
+  // 水位
+  total:     { g: 'water', v: 10,  min: 1,   max: 30,  step: 1,    label: '要搖幾下', restart: true },
+  topLevel:  { g: 'water', v: 340, min: 200, max: 650, step: 5,    label: '最後水面高度 (y px)' },
+  stiff:     { g: 'water', v: 14,  min: 2,   max: 40,  step: 1,    label: '水位上升彈性' },
+  damp:      { g: 'water', v: 4.5, min: 1,   max: 12,  step: 0.5,  label: '水位阻尼（越大越不晃）' },
+  waveAmp:   { g: 'water', v: 3,   min: 0,   max: 12,  step: 0.5,  label: '平靜時波浪 (px)' },
+  shakeWave: { g: 'water', v: 10,  min: 0,   max: 30,  step: 1,    label: '搖晃時波浪 (px)' },
+  bubbles:   { g: 'water', v: 28,  min: 0,   max: 80,  step: 1,    label: '每搖一下的泡泡數' },
+  bubbleAlpha:{ g: 'water', v: 0.8, min: 0.1, max: 1,  step: 0.05, label: '泡泡明顯度' },
+  clearRatio:{ g: 'water', v: 0.35, min: 0,  max: 1,   step: 0.05, label: '有清楚外框的泡泡比例' },
+  screenShake:{ g: 'water', v: 6,  min: 0,   max: 16,  step: 1,    label: '畫面震動 (px)' },
+  hudHide:   { g: 'water', v: 470, min: 300, max: 712, step: 5,    label: '水面高過此 y 時數字淡出' },
+  // 浮島 + Migo 一起漂
+  islandRise:{ g: 'float', v: 2,   min: -20, max: 30,  step: 1,    label: '浮島高出水面 (px)' },
+  bobAmp:    { g: 'float', v: 6,   min: 0,   max: 30,  step: 1,    label: '上下浮動幅度 (px)' },
+  bobSec:    { g: 'float', v: 2.6, min: 0.6, max: 6,   step: 0.1,  label: '上下週期 (秒)' },
+  driftAmp:  { g: 'float', v: 10,  min: 0,   max: 50,  step: 1,    label: '左右漂移幅度 (px)' },
+  driftSec:  { g: 'float', v: 4.3, min: 1,   max: 10,  step: 0.1,  label: '左右週期 (秒)' },
+  tiltDeg:   { g: 'float', v: 3,   min: 0,   max: 12,  step: 0.5,  label: '傾斜角度 (°)' },
+  squash:    { g: 'float', v: 2,   min: 0,   max: 8,   step: 0.5,  label: 'Migo 呼吸彈性 (%)' },
+  // 噴發
+  rumbleSec: { g: 'erupt', v: 1.4, min: 0.2, max: 4,   step: 0.1,  label: '第 5 下後瘋狂震動 (秒)' },
+  rumbleMax: { g: 'erupt', v: 16,  min: 0,   max: 30,  step: 1,    label: '瘋狂震動最大幅度 (px)' },
+  panSec:    { g: 'erupt', v: 1.6, min: 0.4, max: 5,   step: 0.1,  label: '噴泉運鏡：由下往上 (秒)' },
+  panZoom:   { g: 'erupt', v: 1.25, min: 1,  max: 2,   step: 0.05, label: '運鏡起始放大倍率' },
+  holdSec:   { g: 'erupt', v: 1.2, min: 0.3, max: 5,   step: 0.1,  label: '運鏡到頂後停留 (秒)' },
+  // 表情
+  expr2At:   { g: 'float', v: 4,   min: 1,   max: 30,  step: 1,    label: '搖到第幾下換半瞇眼' },
+  expr3At:   { g: 'float', v: 8,   min: 1,   max: 30,  step: 1,    label: '搖到第幾下換暈眼' },
+};
+const DEFAULTS = Object.fromEntries(Object.entries(P).map(([k, o]) => [k, o.v]));
+
+for (const [k, o] of Object.entries(P)) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${o.label}<span id="v_${k}">${o.v}</span></label>
+    <input type="range" id="s_${k}" min="${o.min}" max="${o.max}" step="${o.step}" value="${o.v}">`;
+  document.getElementById('sliders-' + o.g).appendChild(row);
+  row.querySelector('input').addEventListener('input', e => {
+    o.v = parseFloat(e.target.value);
+    document.getElementById('v_' + k).textContent = o.v;
+    if (o.restart) restart(); else if (S.phase === 'water') S.target = levelFor(S.count);
+  });
+}
+
+// ================= 常數 / 狀態 =================
+const W = 390, H = 844, SURF0 = 712;          // SURF0 = 原圖水面（浮島中心）
+const ISLAND = { x: 195, y: 730 };              // 浮島中心（對齊 Migo 中心）
+const FOUNTAIN_TOP = { x: 193, y: 124, s: 0.6, r: -3 };   // 噴泉圖裡水柱頂（原本浮島的位置）
+const SKY_POS = { x: 195, y: 360, s: 0.6, r: -14 };     // 星空稿裡浮島的位置
+const GROUND_SPRING = { x: 207, y: 735 };                  // 星空地面泉眼
+const TAU = Math.PI * 2;
+
+const S = { phase: 'water', pt: 0, count: 5, level: SURF0, vel: 0, target: SURF0, energy: 0, t: 0,
+            shakeT: 0, shakeK: 0, wobble: 0, launchFrom: null, fountainOff: 0 };
+const bubbles = [], pops = [], drops = [];
+const raftPose = { x: ISLAND.x, y: SURF0, s: 1, r: 0 };
+
+const levelFor = c => SURF0 + (P.topLevel.v - SURF0) * (1 - c / P.total.v);
+const progress = () => 1 - S.count / P.total.v;
+const shakesDone = () => P.total.v - S.count;     // 畫面顯示：已經搖了幾下（0 → 1 → … → 5）
+const clamp01 = v => Math.min(Math.max(v, 0), 1);
+const lerp = (a, b, k) => a + (b - a) * k;
+const easeOutCubic = k => 1 - (1 - k) ** 3;
+const easeInCubic = k => k * k * k;
+const easeInOut = k => k < .5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+const easeOutBack = k => { const c = 1.4; return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2; };
+
+function wave(x) {
+  const amp = P.waveAmp.v * (1 + progress()) + P.shakeWave.v * S.energy;
+  return S.level + amp * (0.6 * Math.sin(x * 0.025 + S.t * 2.2) + 0.4 * Math.sin(x * 0.061 - S.t * 3.1 + 1.3));
+}
+
+// ================= 畫布 =================
+function setupCanvas(id) {
+  const c = document.getElementById(id), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = W * dpr; c.height = H * dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+  return ctx;
+}
+const wctx = setupCanvas('water'), bctx = setupCanvas('back'), fctx = setupCanvas('fx');
+
+function spawnBubble(burst) {
+  const cols = [55, 232, 345];               // 三條泉眼，跟設計稿一樣成串往上
+  const x = Math.random() < 0.75 ? cols[(Math.random() * 3) | 0] + (Math.random() - 0.5) * 30 : 20 + Math.random() * 350;
+  bubbles.push({ x, y: H + 10 + (burst ? Math.random() * 120 : 0),
+    r: 2 + Math.random() ** 2 * (burst ? 9 : 6), vy: 70 + Math.random() * (burst ? 160 : 70), ph: Math.random() * TAU,
+    clear: Math.random() < P.clearRatio.v });   // 一部分泡泡有清楚的外框線
+}
+
+function glowDot(ctx, x, y, r, a) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
+  g.addColorStop(0, `rgba(225,255,252,${a})`);
+  g.addColorStop(0.45, `rgba(150,250,240,${a * 0.55})`);
+  g.addColorStop(1, 'rgba(120,240,240,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, TAU); ctx.fill();
+}
+
+function drawWater() {
+  const ctx = wctx;
+  ctx.clearRect(0, 0, W, H);
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 5) ctx.lineTo(x, wave(x));
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const top = S.level - 15;
+  const g = ctx.createLinearGradient(0, top, 0, H);
+  g.addColorStop(0, 'rgba(130,250,240,0.40)');
+  g.addColorStop(0.2, 'rgba(80,215,225,0.40)');
+  g.addColorStop(1, 'rgba(30,125,170,0.50)');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  const g2 = ctx.createLinearGradient(0, top, 0, top + 70);
+  g2.addColorStop(0, 'rgba(210,255,250,0.35)');
+  g2.addColorStop(1, 'rgba(210,255,250,0)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, top, W, 70);
+  ctx.restore();
+
+  // 泡泡：大部分柔和半透明；一部分（clearRatio）有清楚的細外框和小高光
+  const A = P.bubbleAlpha.v;
+  for (const b of bubbles) {
+    const gb = ctx.createRadialGradient(b.x - b.r * 0.25, b.y - b.r * 0.25, 0, b.x, b.y, b.r);
+    gb.addColorStop(0, `rgba(200,255,250,${0.06 * A})`);
+    gb.addColorStop(0.65, `rgba(170,250,245,${0.2 * A})`);
+    gb.addColorStop(0.9, `rgba(205,255,252,${0.55 * A})`);
+    gb.addColorStop(1, 'rgba(205,255,252,0)');
+    ctx.fillStyle = gb;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+    if (b.clear) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(225,255,255,${0.7 * A})`;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.92, 0, TAU); ctx.stroke();
+    }
+    if (b.r > 3.5) {
+      ctx.fillStyle = `rgba(255,255,255,${(b.clear ? 0.7 : 0.3) * A})`;
+      ctx.beginPath(); ctx.arc(b.x - b.r * 0.38, b.y - b.r * 0.38, b.r * 0.16, 0, TAU); ctx.fill();
+    }
+  }
+
+  // 水面線
+  ctx.save();
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 5) x ? ctx.lineTo(x, wave(x)) : ctx.moveTo(x, wave(x));
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = 'rgba(215,255,255,0.9)';
+  ctx.shadowColor = 'rgba(110,250,245,1)';
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// 浮島局部座標 → 畫面座標
+function raftToWorld(lx, ly) {
+  const p = raftPose, a = p.r * Math.PI / 180;
+  const dx = (lx - ISLAND.x) * p.s, dy = (ly - ISLAND.y) * p.s;
+  return { x: p.x + dx * Math.cos(a) - dy * Math.sin(a), y: p.y + dx * Math.sin(a) + dy * Math.cos(a) };
+}
+
+function drawFx() {
+  bctx.clearRect(0, 0, W, H);
+  fctx.clearRect(0, 0, W, H);
+  // 破掉的泡泡圈（淡）
+  for (const p of pops) {
+    const k = p.life / 0.35;
+    fctx.beginPath();
+    fctx.ellipse(p.x, p.y, p.r * (1 + (1 - k) * 2.2), p.r * 0.5 * (1 + (1 - k)), 0, 0, TAU);
+    fctx.strokeStyle = `rgba(215,255,255,${0.35 * k * P.bubbleAlpha.v * 2})`;
+    fctx.lineWidth = 1;
+    fctx.stroke();
+  }
+  // 水花 / 水滴
+  for (const d of drops) glowDot(d.back ? bctx : fctx, d.x, d.y, d.r, d.a ?? 0.75);
+
+}
+
+// ================= 搖一下 =================
+const numEl = document.getElementById('num');
+function shake() {
+  if (S.phase !== 'water') return;
+  S.count--;
+  S.target = levelFor(S.count);
+  S.vel -= 70;
+  S.energy = 1;
+  S.shakeT = 0.35; S.shakeK = P.screenShake.v;
+  S.wobble = 1;
+  for (let i = 0; i < P.bubbles.v; i++) spawnBubble(true);
+  splash(14);
+  numEl.textContent = shakesDone();
+  numEl.classList.remove('pop'); void numEl.offsetWidth; numEl.classList.add('pop');
+  document.getElementById('tip').style.opacity = 0;
+  if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(40);
+  if (S.count <= 0) setPhase('rumble');
+}
+
+function splash(n) {
+  for (let i = 0; i < n; i++) {
+    const x = 20 + Math.random() * 350;
+    drops.push({ x, y: wave(x), vx: (Math.random() - 0.5) * 120, vy: -140 - Math.random() * 180,
+      r: 1.5 + Math.random() * 2.5, g: 650, toSurface: true, life: 3 });
+  }
+}
+
+function setPhase(p) { S.phase = p; S.pt = 0; if (p !== 'water') document.getElementById('tip').style.opacity = 0; }
+
+function restart() {
+  setPhase('water');
+  Object.assign(S, { count: P.total.v, level: SURF0, vel: 0, target: SURF0, energy: 0, wobble: 0, shakeT: 0 });
+  bubbles.length = pops.length = drops.length = 0;
+  numEl.textContent = shakesDone();
+  document.getElementById('tip').style.opacity = 1;
+  scene('cave', 1); scene('fountain', 0); scene('result', 0);
+  resultScene.classList.remove('on');
+  raft.style.visibility = '';
+  fmigo.style.transform = '';
+  setFountainCam(H - FOUNTAIN_H, P.panZoom.v);
+  flash.style.opacity = 0;
+  islandEl.style.opacity = 1;
+  document.getElementById('water').style.opacity = 1;
+}
+
+function skipToErupt() {
+  restart();
+  S.count = 0; S.level = S.target = levelFor(0);
+  numEl.textContent = shakesDone();
+  setPhase('rumble');
+}
+
+// ================= 場景控制 =================
+const scenes = { cave: caveScene, fountain: fountainScene, result: resultScene };
+const FOUNTAIN_H = 1088;                       // 噴泉長圖高度
+// 噴泉鏡頭：camY = 長圖往下推多少（負值 = 看圖的下半部），zoom 以畫面中心為準
+function setFountainCam(camY, zoom) {
+  const cy = H / 2 - camY;                     // 畫面中心對到長圖上的 y
+  fcam.style.transformOrigin = `304px ${cy.toFixed(1)}px`;
+  fcam.style.transform = `translateY(${camY.toFixed(1)}px) scale(${zoom.toFixed(4)})`;
+}
+function scene(name, opacity, y = 0) {
+  scenes[name].style.opacity = opacity;
+  scenes[name].style.transform = y ? `translateY(${y.toFixed(1)}px)` : '';
+}
+
+// ================= 主迴圈 =================
+const migo = document.getElementById('migo'), raft = document.getElementById('raft'), islandEl = document.querySelector('.island');
+const stage = document.getElementById('stage'), hud = document.getElementById('hud'), flash = document.getElementById('flash');
+let last = performance.now(), paused = false, ambientAcc = 0;
+
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (!paused) step(dt);
+  requestAnimationFrame(frame);
+}
+
+// 浮島+Migo 共用的漂浮位移
+function floatOffset(scale) {
+  const bobPhase = TAU * S.t / P.bobSec.v;
+  const bob = Math.sin(bobPhase) * 0.85 + Math.sin(bobPhase * 2.3 + 1.1) * 0.15;
+  const driftPhase = TAU * S.t / P.driftSec.v;
+  const drift = Math.sin(driftPhase) * 0.8 + Math.sin(driftPhase * 1.7 + 0.6) * 0.2;
+  return { x: drift * P.driftAmp.v * scale, y: -bob * P.bobAmp.v / 2 * scale, r: Math.cos(driftPhase) * P.tiltDeg.v, bobPhase };
+}
+
+function step(dt) {
+  S.t += dt;
+  S.pt += dt;
+  const ph = S.phase;
+
+  // ---------- 水 ----------
+  if (ph === 'water' || ph === 'rumble') {
+    if (ph === 'rumble') {                    // 蓄力：水面鼓起、越震越大、泡泡狂冒
+      const k = clamp01(S.pt / P.rumbleSec.v);
+      S.target = levelFor(0) - 25 * k;
+      S.energy = Math.max(S.energy, 0.6 + 0.9 * k);
+      // 瘋狂震動：幅度從 25% 一路加到最大，Migo 跟著狂晃
+      S.shakeT = 0.35; S.shakeK = P.rumbleMax.v * (0.25 + 0.75 * k * k);
+      S.wobble = Math.max(S.wobble, 0.5 + 0.7 * k);
+      for (let i = 0; i < 2; i++) spawnBubble(true);
+      hud.style.opacity = Math.min(parseFloat(hud.style.opacity || 1), 1 - k).toFixed(3);   // 已淡出就不要再跑回來
+      if (S.pt >= P.rumbleSec.v) {
+        S.launchFrom = { ...raftPose };
+        S.fountainOff = Math.max(S.launchFrom.y - FOUNTAIN_TOP.y, 0);
+        splash(30);
+        document.getElementById('water').style.opacity = 0;   // 白光蓋住的瞬間收掉水層
+        setPhase('launch');
+      }
+    }
+    const a = (S.target - S.level) * P.stiff.v - S.vel * P.damp.v;
+    S.vel += a * dt;
+    S.level += S.vel * dt;
+    if (ph === 'water') S.energy *= Math.exp(-dt * 1.3);
+
+    ambientAcc += dt * (2 + 8 * progress());
+    while (ambientAcc > 1) { ambientAcc--; spawnBubble(false); }
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+      const b = bubbles[i];
+      b.y -= b.vy * dt;
+      b.x += Math.sin(S.t * 3 + b.ph) * 12 * dt;
+      if (b.y - b.r < wave(b.x) + 1) {
+        if (b.r > 3) pops.push({ x: b.x, y: wave(b.x), r: b.r, life: 0.35 });
+        bubbles.splice(i, 1);
+      }
+    }
+    drawWater();
+    if (ph === 'water') hud.style.opacity = clamp01((S.level - (P.hudHide.v - 50)) / 50).toFixed(3);
+  }
+  S.wobble *= Math.exp(-dt * 3);
+  for (let i = pops.length - 1; i >= 0; i--) if ((pops[i].life -= dt) <= 0) pops.splice(i, 1);
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.vy += d.g * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt;
+    if (d.fade) d.a = 0.8 * clamp01(d.life / d.fade);
+    const gone = d.life <= 0 || d.y > H + 20 || (d.toSurface && (ph === 'water' || ph === 'rumble') && d.vy > 0 && d.y > wave(d.x))
+      || (d.ground && d.vy > 0 && d.y > GROUND_SPRING.y);
+    if (gone) drops.splice(i, 1);
+  }
+
+  // ---------- 浮島 + Migo 的位置 ----------
+  let pose, floatK = 1;
+  if (ph === 'water' || ph === 'rumble') {
+    const slope = (wave(ISLAND.x + 50) - wave(ISLAND.x - 50)) / 100;
+    pose = { x: ISLAND.x, y: wave(ISLAND.x) - P.islandRise.v, s: 1, r: Math.atan(slope) * 180 / Math.PI * 0.7 };
+  } else if (ph === 'launch') {
+    // 噴泉頁運鏡：從長圖最底部（水柱噴出處）快速往上搖到洞口，起始放大、邊搖邊拉遠
+    scene('cave', 0);
+    scene('fountain', 1);
+    raft.style.visibility = 'hidden';          // 噴泉頁用 Figma 的 Migo
+    flash.style.opacity = (0.85 * (1 - clamp01(S.pt / 0.35))).toFixed(3);
+    const k = clamp01(S.pt / P.panSec.v), e = easeOutCubic(k);
+    setFountainCam(lerp(H - FOUNTAIN_H, 0, e), lerp(P.panZoom.v, 1, e));
+    S.shakeT = 0.35; S.shakeK = 10 * (1 - k);
+    // 水柱往上衝的水花
+    if (k < 0.85) for (let i = 0; i < 3; i++) {
+      drops.push({ x: 195 + (Math.random() - 0.5) * 110, y: H + 10, vx: (Math.random() - 0.5) * 80,
+        vy: -900 - Math.random() * 700, r: 1.5 + Math.random() * 3, g: 900, life: 1.1, fade: 1.1 });
+    }
+    pose = { ...SKY_POS }; floatK = 0;
+    if (k >= 1) setPhase('hold');
+  } else if (ph === 'hold') {                 // 到頂：靜止，跟 Figma 一樣
+    setFountainCam(0, 1);
+    S.shakeT = 0;
+    pose = { ...SKY_POS }; floatK = 0;
+    if (S.pt >= P.holdSec.v) setPhase('exit');
+  } else if (ph === 'exit') {                 // Migo 留在原地，白光一閃切到結算頁
+    const k = clamp01(S.pt / 0.5);
+    pose = { ...SKY_POS }; floatK = 0;
+    flash.style.opacity = clamp01((S.pt - 0.2) / 0.3).toFixed(3);
+    if (k >= 1) {
+      // 直接切到結算頁（靜態，照 Figma）；結算頁自己有浮島和 Migo，所以把我們的浮島組藏起來
+      scene('fountain', 0); scene('result', 1);
+      resultScene.classList.add('on');
+      document.getElementById('resultNum').textContent = shakesDone();
+      document.getElementById('resultShakes').textContent = shakesDone();
+      raft.style.visibility = 'hidden';
+      document.getElementById('water').style.opacity = 0;
+      drops.length = 0;
+      setPhase('result');
+    }
+  } else if (ph === 'result') {               // 結算頁：完全靜止，只有白光淡出
+    flash.style.opacity = (1 - clamp01(S.pt / 0.4)).toFixed(3);
+    pose = { ...SKY_POS };
+    floatK = 0;
+    S.wobble = 0;
+  }
+
+  const fo = floatOffset(pose.s);
+  raftPose.x = pose.x + fo.x * floatK;
+  raftPose.y = pose.y + fo.y * floatK;
+  raftPose.s = pose.s;
+  raftPose.r = pose.r + fo.r * floatK + Math.sin(S.t * 22) * 6 * S.wobble;
+  raft.style.transform = `translate(${(raftPose.x - ISLAND.x).toFixed(2)}px, ${(raftPose.y - ISLAND.y).toFixed(2)}px) rotate(${raftPose.r.toFixed(2)}deg) scale(${raftPose.s.toFixed(4)})`;
+
+  // Migo 站在浮島上，只有輕微呼吸
+  // 表情：依搖了幾下切換，最後瘋狂震動時一定是暈眼
+  const done = shakesDone();
+  migo.dataset.e = (ph === 'rumble' || done >= P.expr3At.v) ? '3' : done >= P.expr2At.v ? '2' : '1';
+
+  const still = ph === 'launch' || ph === 'hold' || ph === 'result';
+  const s = still ? 0 : P.squash.v / 100 + 0.05 * S.wobble, v = Math.cos(fo.bobPhase);
+  migo.style.transform = `scale(${(1 + v * s * 0.5).toFixed(4)}, ${(1 - v * s * 0.5).toFixed(4)})`;
+
+  drawFx();
+
+  // 畫面震動
+  if (S.shakeT > 0) {
+    S.shakeT -= dt;
+    const k = S.shakeK * Math.max(S.shakeT / 0.35, 0.3);
+    stage.style.transform = `translate(${((Math.random() - 0.5) * 2 * k).toFixed(1)}px, ${((Math.random() - 0.5) * 2 * k).toFixed(1)}px)`;
+  } else stage.style.transform = '';
+}
+
+function sprayAt(x, y, n) {
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+    const sp = 120 + Math.random() * 200;
+    drops.push({ x: x + (Math.random() - 0.5) * 60, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      r: 1.5 + Math.random() * 2.2, g: 520, life: 1.2, fade: 1.2 });
+  }
+}
+
+requestAnimationFrame(frame);
+
+// ================= 輸入 =================
+document.getElementById('phone').addEventListener('pointerdown', e => { if (!e.target.closest('button')) shake(); });
+document.getElementById('shakeBtn').onclick = shake;
+document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); shake(); } });
+document.getElementById('restart').onclick = restart;
+document.getElementById('resultReplay').onclick = restart;
+document.getElementById('skip').onclick = skipToErupt;
+document.getElementById('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '播放' : '暫停'; };
+document.getElementById('reset').onclick = () => {
+  for (const k in P) {
+    P[k].v = DEFAULTS[k];
+    document.getElementById('s_' + k).value = DEFAULTS[k];
+    document.getElementById('v_' + k).textContent = DEFAULTS[k];
+  }
+  restart();
+};
+
+// 手機真的搖（需要 https 或 localhost；iOS 要先按按鈕授權）
+let lastMotion = 0;
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if (!a) return;
+  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  const now = performance.now();
+  if (mag > 22 && now - lastMotion > 500) { lastMotion = now; shake(); }
+}
+document.getElementById('motion').onclick = async e => {
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+      if (await DeviceMotionEvent.requestPermission() !== 'granted') throw 0;
+    }
+    window.addEventListener('devicemotion', onMotion);
+    e.target.textContent = '手機搖晃：開';
+  } catch { e.target.textContent = '無法使用感應器'; }
+};
+
+restart();
+</script>
+
+<script>
+// ?dev 才顯示參數面板；否則把手機畫面縮放到塞進視窗
+(() => {
+  const dev = new URLSearchParams(location.search).has('dev');
+  if (dev) { document.body.classList.add('dev'); return; }
+  const phone = document.getElementById('phone');
+  const fit = () => {
+    const s = Math.min(window.innerWidth / 390, window.innerHeight / 844);
+    phone.style.transform = 'scale(' + s + ')';
+    phone.style.borderRadius = s < 1 ? '0' : '';
+  };
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+})();
+</script>
+</body>
+</html>
