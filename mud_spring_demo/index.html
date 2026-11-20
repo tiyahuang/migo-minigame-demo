@@ -91,6 +91,13 @@
   body:not(.dev) .panel { display: none; }
   body:not(.dev) { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
   body:not(.dev) .phone { flex: none; transform-origin: center center; }
+
+  /* 參數面板開關按鈕 */
+  .panel-toggle { position: fixed; top: 12px; right: 12px; z-index: 50; flex: none; width: auto;
+    padding: 8px 14px; border-radius: 999px; border: 0; font-size: 13px; font-weight: 700; cursor: pointer;
+    background: rgba(20, 20, 40, .55); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .panel-toggle:hover { background: rgba(20, 20, 40, .75); }
+  .header-settings-hit { position: absolute; left: 286px; top: 64px; width: 44px; height: 40px; z-index: 8; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -551,19 +558,36 @@ restart();
 </script>
 
 <script>
-// ?dev 才顯示參數面板；否則把手機畫面縮放到塞進視窗
+// 參數面板：右上角按鈕（或手機畫面 header 的調整圖示）開關；網址加 ?dev 一進來就打開
 (() => {
-  const dev = new URLSearchParams(location.search).has('dev');
-  if (dev) { document.body.classList.add('dev'); return; }
   const phone = document.getElementById('phone');
   const fit = () => {
+    if (document.body.classList.contains('dev')) { phone.style.transform = ''; phone.style.borderRadius = ''; return; }
     const s = Math.min(window.innerWidth / 390, window.innerHeight / 844);
     phone.style.transform = 'scale(' + s + ')';
     phone.style.borderRadius = s < 1 ? '0' : '';
   };
+  const btn = document.createElement('button');
+  btn.className = 'panel-toggle';
+  btn.type = 'button';
+  const setOpen = open => {
+    document.body.classList.toggle('dev', open);
+    btn.textContent = open ? '✕ 關閉參數' : '⚙ 參數';
+    btn.setAttribute('aria-expanded', open);
+    fit();
+  };
+  btn.addEventListener('click', () => setOpen(!document.body.classList.contains('dev')));
+  document.body.appendChild(btn);
+  // 手機畫面 header 右上的「調整」圖示也能打開（位置照 Figma header）
+  const hit = document.createElement('div');
+  hit.className = 'header-settings-hit';
+  hit.title = '參數';
+  hit.addEventListener('pointerdown', e => e.stopPropagation());
+  hit.addEventListener('click', e => { e.stopPropagation(); setOpen(!document.body.classList.contains('dev')); });
+  phone.appendChild(hit);
   window.addEventListener('resize', fit);
   window.addEventListener('load', fit);
-  fit();
+  setOpen(new URLSearchParams(location.search).has('dev'));
 })();
 </script>
 </body>
