@@ -113,7 +113,6 @@
     padding: 8px 14px; border-radius: 999px; border: 0; font-size: 13px; font-weight: 700; cursor: pointer;
     background: rgba(20, 20, 40, .55); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .panel-toggle:hover { background: rgba(20, 20, 40, .75); }
-  .header-settings-hit { position: absolute; left: 286px; top: 64px; width: 44px; height: 40px; z-index: 8; cursor: pointer; }
 
   /* 遊戲切換鈕 */
   .game-switch { position: fixed; top: 12px; left: 12px; z-index: 50; display: flex; padding: 3px; gap: 2px;
@@ -626,7 +625,8 @@ document.getElementById('phone').addEventListener('pointerdown', shake);
 document.getElementById('shakeBtn').onclick = shake;
 document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); shake(); } });
 document.getElementById('restart').onclick = restart;
-document.getElementById('resultReplay').onclick = restart;
+// 結算頁剛出現時，連點過來的那一下不要誤按到 Play again（不然會直接重開、計數跳回 1）
+document.getElementById('resultReplay').onclick = () => { if (S.phase === 'result' && S.pt < 0.8) return; restart(); };
 document.getElementById('skip').onclick = skipToErupt;
 document.getElementById('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '播放' : '暫停'; };
 document.getElementById('reset').onclick = () => {
@@ -677,13 +677,7 @@ restart();
   };
   btn.addEventListener('click', () => setOpen(!document.body.classList.contains('dev')));
   document.body.appendChild(btn);
-  // 手機畫面 header 右上的「調整」圖示也能打開（位置照 Figma header）
-  const hit = document.createElement('div');
-  hit.className = 'header-settings-hit';
-  hit.title = '參數';
-  hit.addEventListener('pointerdown', e => e.stopPropagation());
-  hit.addEventListener('click', e => { e.stopPropagation(); setOpen(!document.body.classList.contains('dev')); });
-  phone.appendChild(hit);
+  // （遊戲畫面裡 header 的「調整」圖示不再能開面板：連點時容易誤觸，面板一開排版就變，下一下會點到滑桿把遊戲重來）
   window.addEventListener('resize', fit);
   window.addEventListener('load', fit);
   setOpen(new URLSearchParams(location.search).has('dev'));   // 預設收起；網址加 ?dev 則一進來就打開
