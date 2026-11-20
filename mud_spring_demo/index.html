@@ -142,17 +142,9 @@
     .panel-toggle { right: 8px; }
   }
 
-  /* 右上角：畫面比例切換（等比／填滿）+ 參數鈕 */
+  /* 右上角：參數鈕 */
   .top-right { position: fixed; top: 12px; right: 12px; z-index: 50; display: flex; gap: 6px; align-items: center; }
   .top-right .panel-toggle { position: static; }
-  .fit-switch { position: relative; display: flex; gap: 2px; padding: 3px; border: 0; border-radius: 999px; cursor: pointer;
-    background: rgba(20, 20, 40, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    font: 700 12px/1 system-ui, "Noto Sans TC", sans-serif; -webkit-tap-highlight-color: transparent; }
-  .fit-switch::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: 40px; border-radius: 999px;
-    background: rgba(255,255,255,.92); transition: transform .18s ease; }
-  .fit-switch.fill::before { transform: translateX(42px); }
-  .fit-switch span { position: relative; z-index: 1; width: 40px; padding: 7px 0; text-align: center; color: rgba(255,255,255,.75); transition: color .18s; }
-  .fit-switch:not(.fill) span:first-child, .fit-switch.fill span:last-child { color: #1d1a3a; }
   @media (max-width: 760px) { .top-right { top: 8px; right: 8px; } }
 </style>
 </head>
@@ -681,8 +673,6 @@ restart();
 (() => {
   const phone = document.getElementById('phone');
   // 畫面比例：等比 / 填滿（記在瀏覽器裡，下次打開一樣）
-  let fitMode = 'fit';
-  try { if (localStorage.getItem('migoFitMode') === 'fill') fitMode = 'fill'; } catch (e) {}
   const fit = () => {
     const dev = document.body.classList.contains('dev');
     const mobile = matchMedia('(max-width: 760px)').matches;
@@ -691,8 +681,7 @@ restart();
     document.documentElement.style.overflow = !dev ? 'hidden' : '';   // 只玩遊戲時整頁鎖住，被裁掉的部分不能拖出來
     const vw = window.innerWidth, vh = window.innerHeight;
     // 等比：完整顯示不裁切，長或寬其中一邊剛好撐滿；填滿：撐滿整個畫面，多的裁掉（至少保留 350 寬、560 高，結算卡片一定看得到）
-    let s = Math.min(vw / 390, vh / 844);
-    if (fitMode === 'fill') s = Math.min(Math.max(vw / 390, vh / 844), vw / 350, vh / 560);
+    const s = Math.min(vw / 390, vh / 844);
     const exW = Math.max(0, 390 - vw / s), exH = Math.max(0, 844 - vh / s);
     const cropL = exW / 2, cropT = Math.min(exH, 110), cropB = exH - cropT;   // 先裁上面的假狀態列／header，剩下才裁下面
     const offX = Math.max(0, (vw - 390 * s) / 2), offY = Math.max(0, (vh - 844 * s) / 2);
@@ -715,19 +704,7 @@ restart();
   btn.addEventListener('click', () => setOpen(!document.body.classList.contains('dev')));
   const bar = document.createElement('div');
   bar.className = 'top-right';
-  const fitSw = document.createElement('button');
-  fitSw.type = 'button';
-  fitSw.className = 'fit-switch';
-  fitSw.title = '畫面比例';
-  fitSw.innerHTML = '<span>等比</span><span>填滿</span>';
-  const syncFit = () => { fitSw.classList.toggle('fill', fitMode === 'fill'); fitSw.setAttribute('aria-label', fitMode === 'fill' ? '畫面比例：填滿' : '畫面比例：等比'); };
-  fitSw.addEventListener('click', () => {
-    fitMode = fitMode === 'fill' ? 'fit' : 'fill';
-    try { localStorage.setItem('migoFitMode', fitMode); } catch (e) {}
-    syncFit(); fit();
-  });
-  syncFit();
-  bar.appendChild(fitSw); bar.appendChild(btn);
+  bar.appendChild(btn);
   document.body.appendChild(bar);
   // （遊戲畫面裡 header 的「調整」圖示不再能開面板：連點時容易誤觸，面板一開排版就變，下一下會點到滑桿把遊戲重來）
   window.addEventListener('resize', fit);
