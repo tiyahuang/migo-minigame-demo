@@ -110,15 +110,36 @@
   body:not(.dev) { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
   body:not(.dev) .phone { flex: none; transform-origin: center center; }
 
+  /* 極簡捲軸：沒有軌道底色，只有一條可以拖的細條 */
+  .panel { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+  .panel::-webkit-scrollbar { width: 6px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 3px; }
+  .panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.45); }
+  .panel::-webkit-scrollbar-button { display: none; height: 0; }
   /* 參數面板開關按鈕 */
   .panel-toggle { position: fixed; top: 12px; right: 12px; z-index: 50; flex: none; width: auto;
     padding: 8px 14px; border-radius: 999px; border: 0; font-size: 13px; font-weight: 700; cursor: pointer;
     background: rgba(20, 20, 40, .55); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .panel-toggle:hover { background: rgba(20, 20, 40, .75); }
   .header-settings-hit { position: absolute; left: 286px; top: 64px; width: 44px; height: 40px; z-index: 8; cursor: pointer; }
+
+  /* 遊戲切換鈕 */
+  .game-switch { position: fixed; top: 12px; left: 12px; z-index: 50; display: flex; padding: 3px; gap: 2px;
+    border-radius: 999px; background: rgba(20, 20, 40, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    font: 700 13px/1 system-ui, "Noto Sans TC", sans-serif; }
+  .game-switch a { padding: 7px 12px; border-radius: 999px; color: rgba(255,255,255,.75); text-decoration: none; white-space: nowrap; }
+  .game-switch a:hover { color: #fff; }
+  .game-switch a.on { background: rgba(255,255,255,.92); color: #1d1a3a; }
 </style>
 </head>
 <body>
+
+
+<nav class="game-switch" aria-label="切換遊戲">
+  <a href="../migo_float_test/" class="on" aria-current="page">B 綿綿洞窟</a>
+  <a href="../mud_spring_demo/">A 噗噗泉</a>
+</nav>
 
 <div class="phone" id="phone">
   <div class="stage" id="stage">

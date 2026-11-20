@@ -25,9 +25,12 @@
 
   /* 第 1 張：湖面（背景原圖 1024×1607 → Figma 位置 x -78，546×857） */
   .bg-lake { left: -78px; top: 0; width: 546px; height: 857px; }
-  .raft { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 193px 553px; will-change: transform; }
+  .raft { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 190px 551px; will-change: transform; }
   .raft img { position: absolute; }
-  .island { left: 65.96px; top: 505.5px; width: 253.8px; height: 96px; }
+  /* 浮島與倒影：從平靜湖面原圖裁切，原圖 → 畫面縮放 0.5579 */
+  .island { left: 60.1px; top: 504.9px; width: 262.2px; height: 93.2px; }
+  .island-reflection { left: 60.1px; top: 583px; width: 262.2px; height: 75.3px; }
+  .bg-calm { left: -90.5px; top: 0; width: 571.3px; height: 857px; }
   .migo-calm { left: 8px; top: 247px; width: 373px; height: 373px; }      /* 含陰影與環境光，比對設計稿定位 */
 
   /* 第 2、3 張：噴發（同一張長圖，第 3 張是鏡頭推近） */
@@ -92,23 +95,45 @@
   body:not(.dev) { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
   body:not(.dev) .phone { flex: none; transform-origin: center center; }
 
+  /* 極簡捲軸：沒有軌道底色，只有一條可以拖的細條 */
+  .panel { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+  .panel::-webkit-scrollbar { width: 6px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 3px; }
+  .panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.45); }
+  .panel::-webkit-scrollbar-button { display: none; height: 0; }
   /* 參數面板開關按鈕 */
   .panel-toggle { position: fixed; top: 12px; right: 12px; z-index: 50; flex: none; width: auto;
     padding: 8px 14px; border-radius: 999px; border: 0; font-size: 13px; font-weight: 700; cursor: pointer;
     background: rgba(20, 20, 40, .55); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .panel-toggle:hover { background: rgba(20, 20, 40, .75); }
   .header-settings-hit { position: absolute; left: 286px; top: 64px; width: 44px; height: 40px; z-index: 8; cursor: pointer; }
+
+  /* 遊戲切換鈕 */
+  .game-switch { position: fixed; top: 12px; left: 12px; z-index: 50; display: flex; padding: 3px; gap: 2px;
+    border-radius: 999px; background: rgba(20, 20, 40, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    font: 700 13px/1 system-ui, "Noto Sans TC", sans-serif; }
+  .game-switch a { padding: 7px 12px; border-radius: 999px; color: rgba(255,255,255,.75); text-decoration: none; white-space: nowrap; }
+  .game-switch a:hover { color: #fff; }
+  .game-switch a.on { background: rgba(255,255,255,.92); color: #1d1a3a; }
 </style>
 </head>
 <body>
+
+
+<nav class="game-switch" aria-label="切換遊戲">
+  <a href="../migo_float_test/">B 綿綿洞窟</a>
+  <a href="../mud_spring_demo/" class="on" aria-current="page">A 噗噗泉</a>
+</nav>
 
 <div class="phone" id="phone">
   <div class="stage" id="stage">
     <!-- 第 1 張：湖面 -->
     <div class="scene" id="lakeScene">
-      <img class="bg-lake" src="assets/bg_lake_noisland.png" alt="">
+      <img class="bg-calm" src="assets/bg_lake_calm.png" alt="">
       <canvas id="lakeBack"></canvas>
       <div class="raft" id="raft">
+        <img class="island-reflection" src="assets/island_reflection.png" alt="">
         <img class="island" src="assets/island.png" alt="">
         <img class="migo-calm" id="migoCalm" src="assets/migo_calm.png" alt="Migo">
       </div>
@@ -169,7 +194,7 @@ const P = {
   driftSec:   { g: 'shake', v: 6,   min: 2,   max: 14,  step: 0.5,  label: '浮島左右飄一趟 (秒，泥漿黏稠所以慢)' },
   bobAmp:     { g: 'shake', v: 3,   min: 0,   max: 12,  step: 0.5,  label: '浮島上下起伏 (px)' },
   rockKick:   { g: 'shake', v: 9,   min: 0,   max: 30,  step: 1,    label: '每搖一下浮島被推的力道' },
-  steam:      { g: 'shake', v: 4,   min: 0,   max: 20,  step: 1,    label: '冒煙量（越搖越多）' },
+  steam:      { g: 'shake', v: 9,   min: 0,   max: 20,  step: 1,    label: '冒煙量（越搖越多）' },
   bubbleRate: { g: 'shake', v: 6,   min: 0,   max: 30,  step: 1,    label: '湖面冒泡頻率（越搖越多）' },
   burst:      { g: 'shake', v: 5,   min: 0,   max: 20,  step: 1,    label: '每搖一下冒出的泥漿泡' },
   screenShake:{ g: 'shake', v: 6,   min: 0,   max: 16,  step: 1,    label: '畫面震動 (px)' },
@@ -196,7 +221,10 @@ for (const [k, o] of Object.entries(P)) {
 
 // ================= 常數 / 狀態 =================
 const W = 390, H = 844, TAU = Math.PI * 2;
-const ISLAND = { x: 193, y: 553 };
+const ISLAND = { x: 190, y: 551 };              // 新的平靜湖面圖裡浮島的中心（畫面座標）
+const WATERLINE = 590;                          // 浮島吃水線（畫面座標）
+// 平靜湖面圖 1024×1536：Figma 以填滿方式放在 (-78,0) 546×857 → 實際 x -90.5、寬 571.3
+const CALM = { x: -90.5, y: 0, w: 571.3, h: 857 };
 const CAM2 = { x: -77, y: 0, w: 574 };       // 第 2 張背景位置
 const CAM3 = { x: -173, y: 72, w: 914 };     // 第 3 張背景位置（同一張圖放大）
 const MORPH = { dx: 104 - 132, dy: 261.5 - 171.5, s: 2 };   // 暈眼 Migo → 打叉眼 Migo 的位移與放大
@@ -226,9 +254,9 @@ const depth = y => clamp01((y - 470) / 330) * 0.85 + 0.3;
 // 泥漿湖面的範圍：從背景圖算出來（青綠色 = 泥漿；粉紫色地面、遠方山丘都不算）
 let lakeMask = null;
 function buildLakeMask() {
-  const img = document.querySelector('#lakeScene .bg-lake');
+  const img = document.querySelector('#lakeScene .bg-calm');
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d'); x.drawImage(img, -78, 0, 546, 857);
+  const x = c.getContext('2d'); x.drawImage(img, CALM.x, CALM.y, CALM.w, CALM.h);
   const d = x.getImageData(0, 0, W, H).data;
   lakeMask = new Uint8Array(W * H);
   for (let y = 490; y < H; y++) for (let i = 0; i < W; i++) {
@@ -257,17 +285,22 @@ function spawnSteam() {
   for (let i = 0; i < 10; i++) {
     const x = 50 + Math.random() * 290, y = 520 + Math.random() * 190;
     if (!inLake(x, y)) continue;
-    const s = depth(y), life = 3 + Math.random() * 2;
-    steams.push({ x, y, r: (14 + Math.random() * 16) * s, vx: (Math.random() - 0.5) * 8, life, max: life,
-      front: y > ISLAND.y + 40 && Math.random() < 0.6, ph: Math.random() * TAU });
+    // 一路往上竄到數字那一帶（約 y 250）才散掉：從湖面升約 300px，壽命 5～6.5 秒
+    const s = depth(y), life = 5 + Math.random() * 1.5;
+    const rise = (y - (230 + Math.random() * 60)) / life;
+    steams.push({ x, y, r: (20 + Math.random() * 22) * s, vx: (Math.random() - 0.5) * 8, life, max: life,
+      front: y > ISLAND.y + 40 && Math.random() < 0.6, ph: Math.random() * TAU, rise });
     return;
   }
 }
 function popMud(m) {
-  rings.push({ x: m.x, y: m.y, r: m.rMax, s: m.s, life: 0.6 });
-  for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.8, sp = (90 + Math.random() * 120) * m.s;
-    drops.push({ x: m.x, y: m.y - m.rMax * 0.6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: (1.5 + Math.random() * 2.5) * m.s, g: 520, floor: m.y, life: 1.2 });
+  // 濃稠的破法：一圈粗粗的泥漿環慢慢擴散，濺起少量、慢、不透明的泥漿團
+  rings.push({ x: m.x, y: m.y, r: m.rMax, s: m.s, life: 1.0, max: 1.0, thick: true });
+  const n = m.rMax > 14 ? 3 + (Math.random() * 2 | 0) : 1 + (Math.random() * 2 | 0);
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.4, sp = (45 + Math.random() * 55) * Math.sqrt(m.s) * (0.6 + m.rMax / 40);
+    drops.push({ x: m.x + (Math.random() - 0.5) * m.rMax * 0.6, y: m.y - m.rMax * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      r: (2.2 + Math.random() * 2.6) * m.s * (0.7 + m.rMax / 50), g: 300, floor: m.y + 2, life: 2, goo: true, s: m.s });
   }
   if (Math.random() < 0.5) steams.push({ x: m.x, y: m.y - 8, r: 14 * m.s, vx: 0, life: 2.2, max: 2.2, front: m.y > ISLAND.y + 40, ph: Math.random() * TAU });
 }
@@ -279,39 +312,58 @@ function glow(ctx, x, y, r, a) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
 }
 function drawMud(ctx, m) {
-  // 從湖面鼓起的半球泥漿泡（薄荷色、半透明、帶高光）
-  const r = m.r, h = r * 0.85;
+  // 從湖面鼓起的半球泥漿泡（薄荷色）；破掉時先塌陷攤平再融回泥漿
+  const k = m.popped ? clamp01(m.pt / 0.45) : 0;
+  const r = m.r * (1 + 0.35 * k), h = m.r * 0.85 * (1 - 0.85 * k);
+  const A = 1 - k * k;
   ctx.save();
+  ctx.globalAlpha = A;
   const g = ctx.createLinearGradient(m.x, m.y - h, m.x, m.y);
   g.addColorStop(0, 'rgba(200,252,248,0.95)');
-  g.addColorStop(0.6, 'rgba(120,225,225,0.9)');
-  g.addColorStop(1, 'rgba(90,200,210,0.75)');
+  g.addColorStop(0.6, 'rgba(130,228,226,0.92)');
+  g.addColorStop(1, 'rgba(100,206,214,0.8)');
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.ellipse(m.x, m.y, r, h, 0, Math.PI, TAU);
+  ctx.ellipse(m.x, m.y, r, Math.max(h, 0.5), 0, Math.PI, TAU);
   ctx.ellipse(m.x, m.y, r, r * 0.25, 0, 0, Math.PI);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.beginPath(); ctx.ellipse(m.x - r * 0.35, m.y - h * 0.55, r * 0.22, h * 0.14, -0.5, 0, TAU); ctx.fill();
+  // 柔和的高光（模糊光暈，不要銳利白點）
+  if (h > 2) {
+    const hx = m.x - r * 0.32, hy = m.y - h * 0.58, hr = r * 0.42;
+    const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+    hg.addColorStop(0, 'rgba(255,255,255,0.55)');
+    hg.addColorStop(0.45, 'rgba(255,255,255,0.22)');
+    hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.ellipse(hx, hy, hr, hr * 0.7 * (h / (m.r * 0.85 + 0.01)), -0.4, 0, TAU); ctx.fill();
+  }
   ctx.restore();
 }
+function drawGoo(ctx, d) {
+  // 濃稠的泥漿團：不透明薄荷色 + 柔和高光
+  const g = ctx.createRadialGradient(d.x - d.r * 0.35, d.y - d.r * 0.35, 0, d.x, d.y, d.r);
+  g.addColorStop(0, 'rgba(225,255,252,0.98)');
+  g.addColorStop(0.55, 'rgba(150,234,230,0.96)');
+  g.addColorStop(1, 'rgba(110,212,218,0.9)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r * 0.92, d.r * 1.08, 0, 0, TAU); ctx.fill();
+}
 function drawSteam(ctx, s) {
+  // 一縷往上飄的熱氣：底部窄、往上變寬變淡
   const k = 1 - s.life / s.max;                       // 0 → 1
-  const a = 0.26 * Math.sin(Math.PI * k);              // 淡入淡出
-  const rr = s.r * (1 + k * 2.2);
+  const a = 0.4 * Math.sin(Math.PI * Math.min(1, k * 1.15)) * (1 - k * 0.3);
+  const rr = s.r * (0.7 + k * 3.2);
   const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, rr);
   g.addColorStop(0, `rgba(255,255,255,${a})`);
-  g.addColorStop(0.55, `rgba(245,255,255,${a * 0.5})`);
+  g.addColorStop(0.5, `rgba(248,255,255,${a * 0.55})`);
   g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(s.x, s.y, rr, rr * 1.15, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(s.x, s.y, rr * 0.8, rr * 1.5, Math.sin(S.t * 0.6 + s.ph) * 0.25, 0, TAU); ctx.fill();
 }
 function drawLake() {
   back.clearRect(0, 0, W, H); front.clearRect(0, 0, W, H);
   // 浮島四周的漣漪：跟著浮島走，也順便蓋住底下補過的地方
   const ix = ISLAND.x + S.rx, iy = ISLAND.y + 30 + S.ry;
   back.save();
-  back.fillStyle = 'rgba(150,232,230,0.55)';
-  back.beginPath(); back.ellipse(ix, iy - 4, 150, 34, 0, 0, TAU); back.fill();
   for (let i = 0; i < 3; i++) {
     const k = ((S.t * 0.22 + i / 3) % 1);              // 慢慢往外擴
     const rx = 128 + k * 70;
@@ -322,14 +374,23 @@ function drawLake() {
   back.restore();
   for (const s of steams) if (!s.front) drawSteam(back, s);
   for (const r of rings) {
-    const k = r.life / 0.6, rr = r.r * (1 + (1 - k) * 2.2);
-    back.strokeStyle = `rgba(235,255,255,${0.7 * k})`; back.lineWidth = 1.5 * r.s;
-    back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
+    const k = r.life / (r.max || 0.6);
+    if (r.thick) {                                       // 濃稠的泥漿環：粗、慢、帶亮邊
+      const rr = r.r * (1 + (1 - k) * 1.3);
+      back.strokeStyle = `rgba(150,232,228,${0.85 * k})`; back.lineWidth = (2 + 5 * k) * r.s;
+      back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
+      back.strokeStyle = `rgba(240,255,255,${0.45 * k})`; back.lineWidth = 1;
+      back.beginPath(); back.ellipse(r.x, r.y - 1.5 * r.s, rr, rr * 0.28, 0, Math.PI, TAU); back.stroke();
+    } else {
+      const rr = r.r * (1 + (1 - k) * 2.2);
+      back.strokeStyle = `rgba(235,255,255,${0.7 * k})`; back.lineWidth = 1.5 * r.s;
+      back.beginPath(); back.ellipse(r.x, r.y, rr, rr * 0.28, 0, 0, TAU); back.stroke();
+    }
   }
   for (const m of muds) drawMud(m.y > ISLAND.y + 30 ? front : back, m);
 
   // 浮島前緣的泥漿：蓋住吃水線，讓浮島看起來一半沉在泥漿裡
-  const wl = 580 + S.ry;
+  const wl = WATERLINE + S.ry;
   front.save();
   const lg = front.createLinearGradient(0, wl - 7, 0, wl + 16);
   lg.addColorStop(0, 'rgba(150,232,230,0)');
@@ -341,7 +402,7 @@ function drawLake() {
   front.beginPath(); front.ellipse(ix, wl - 1, 128, 12, 0, 0.12, Math.PI - 0.12); front.stroke();
   front.restore();
 
-  for (const d of drops) glow(front, d.x, d.y, d.r, 0.85);
+  for (const d of drops) d.goo ? drawGoo(front, d) : glow(front, d.x, d.y, d.r, 0.85);
   for (const s of steams) if (s.front) drawSteam(front, s);
 }
 
@@ -405,17 +466,20 @@ function frame(now) {
 function stepParticles(dt) {
   for (let i = muds.length - 1; i >= 0; i--) {
     const m = muds[i]; m.t += dt; m.r = m.rMax * easeOutCubic(clamp01(m.t / m.grow));
-    if (m.t > m.grow + 0.15) { popMud(m); muds.splice(i, 1); }
+    if (!m.popped && m.t > m.grow + 0.25) { m.popped = true; m.pt = 0; popMud(m); }   // 鼓到最大後多撐一下才破
+    if (m.popped && (m.pt += dt) > 0.45) muds.splice(i, 1);                            // 塌陷攤平後消失
   }
   for (let i = rings.length - 1; i >= 0; i--) if ((rings[i].life -= dt) <= 0) rings.splice(i, 1);
   for (let i = steams.length - 1; i >= 0; i--) {
     const s = steams[i];
-    s.y -= 18 * dt; s.x += (s.vx + Math.sin(S.t * 0.8 + s.ph) * 6) * dt;
+    s.y -= (s.rise || 18) * dt; s.x += (s.vx + Math.sin(S.t * 0.8 + s.ph) * 7) * dt;
     if ((s.life -= dt) <= 0) steams.splice(i, 1);
   }
   for (let i = drops.length - 1; i >= 0; i--) {
     const d = drops[i]; d.vy += d.g * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt;
-    if (d.life <= 0 || (d.floor && d.vy > 0 && d.y > d.floor) || d.y > H + 30) drops.splice(i, 1);
+    const landed = d.floor && d.vy > 0 && d.y > d.floor;
+    if (landed && d.goo) rings.push({ x: d.x, y: d.floor, r: d.r * 1.6, s: d.s || 1, life: 0.7, max: 0.7, thick: true });  // 泥漿團落回去
+    if (d.life <= 0 || landed || d.y > H + 30) drops.splice(i, 1);
   }
 }
 
@@ -551,7 +615,7 @@ document.getElementById('motion').onclick = async e => {
 };
 
 // 背景圖載入後算出泥漿湖面的範圍
-const lakeImg = document.querySelector('#lakeScene .bg-lake');
+const lakeImg = document.querySelector('#lakeScene .bg-calm');
 if (lakeImg.complete && lakeImg.naturalWidth) buildLakeMask(); else lakeImg.addEventListener('load', buildLakeMask);
 
 restart();
