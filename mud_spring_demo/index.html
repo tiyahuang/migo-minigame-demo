@@ -98,7 +98,7 @@
 
   /* 公開模式：沒有 ?dev 時只顯示遊戲畫面，並縮放到剛好塞進螢幕 */
   body:not(.dev) .panel { display: none; }
-  body:not(.dev) { display: block; padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  body:not(.dev) { display: block; padding: 0; height: 100vh; height: 100lvh; overflow: hidden; }
   body:not(.dev) .phone { flex: none; transform-origin: center center; }
 
   /* 極簡捲軸：沒有軌道底色，只有一條可以拖的細條 */
@@ -134,7 +134,7 @@
   @media (max-width: 760px) {
     /* 手機：遊戲撐滿整個瀏覽器（fit() 裡算縮放和裁切），參數打開時面板接在下面，往下捲就看得到 */
     body, body.dev { display: block; padding: 0; overflow-x: hidden; }
-    body:not(.dev) { height: 100vh; height: 100dvh; overflow: hidden; }
+    body:not(.dev) { height: 100vh; height: 100lvh; overflow: hidden; }
     body.dev { height: auto; overflow-y: auto; }
     body.dev .panel { width: 100%; max-width: none; max-height: none; overflow: visible; border-radius: 0; }
     .game-switch, .panel-toggle { top: 8px; }
@@ -679,7 +679,9 @@ restart();
     const reset = () => { phone.style.transform = phone.style.clipPath = phone.style.margin = phone.style.transformOrigin = ''; phone.style.setProperty('--cropB', '0px'); };
     if (dev && !mobile) { reset(); phone.style.borderRadius = ''; return; }
     document.documentElement.style.overflow = !dev ? 'hidden' : '';   // 只玩遊戲時整頁鎖住，被裁掉的部分不能拖出來
-    const vw = window.innerWidth, vh = window.innerHeight;
+    // 高度用「瀏覽器工具列收起時」的大視窗高度（100lvh），不理手機底部工具列
+    if (!window.__lvhProbe) { const p = document.createElement('div'); p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none'; document.body.appendChild(p); window.__lvhProbe = p; }
+    const vw = window.innerWidth, vh = Math.max(window.innerHeight, window.__lvhProbe.offsetHeight);
     // 等比：完整顯示不裁切，長或寬其中一邊剛好撐滿；填滿：撐滿整個畫面，多的裁掉（至少保留 350 寬、560 高，結算卡片一定看得到）
     const s = Math.min(vw / 390, vh / 844);
     const exW = Math.max(0, 390 - vw / s), exH = Math.max(0, 844 - vh / s);
