@@ -74,7 +74,7 @@
   .num.pop { animation: pop .38s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
   .header { position: absolute; left: 0; top: 0; width: 390px; height: 116px; z-index: 6; pointer-events: none; }
-  .tip { position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; font-size: 13px; color: rgba(255,255,255,.9);
+  .tip { position: absolute; left: 0; right: 0; bottom: calc(30px + var(--cropB, 0px)); text-align: center; font-size: 13px; color: rgba(255,255,255,.9);
     text-shadow: 0 1px 4px rgba(0,60,90,.5); z-index: 6; pointer-events: none; transition: opacity .4s; }
 
   .panel { width: 300px; background: var(--panel); border-radius: 16px; padding: 18px 18px 8px; max-height: 844px; overflow: auto; }
@@ -132,11 +132,11 @@
 
   /* 手機：遊戲滿版，按鈕浮在畫面上，參數面板是蓋在上面的抽屜 */
   @media (max-width: 760px) {
-    body, body.dev { padding: 0; gap: 0; height: 100vh; height: 100dvh; overflow: hidden; }
-    body.dev .phone { flex: none; transform-origin: center center; }
-    body.dev .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: 100%; max-width: none;
-      max-height: 50vh; max-height: 50dvh; overflow: auto; border-radius: 16px 16px 0 0;
-      background: rgba(20, 34, 56, .9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    /* 手機：遊戲撐滿整個瀏覽器（fit() 裡算縮放和裁切），參數打開時面板接在下面，往下捲就看得到 */
+    body, body.dev { display: block; padding: 0; overflow-x: hidden; }
+    body:not(.dev) { height: 100vh; height: 100dvh; overflow: hidden; }
+    body.dev { height: auto; overflow-y: auto; }
+    body.dev .panel { width: 100%; max-width: none; max-height: none; overflow: visible; border-radius: 0; }
     .game-switch, .panel-toggle { top: 8px; }
     .game-switch { left: 8px; }
     .panel-toggle { right: 8px; }
@@ -668,10 +668,31 @@ restart();
 (() => {
   const phone = document.getElementById('phone');
   const fit = () => {
-    if (document.body.classList.contains('dev') && !matchMedia('(max-width: 760px)').matches) { phone.style.transform = ''; phone.style.borderRadius = ''; return; }
-    const s = Math.min(window.innerWidth / 390, window.innerHeight / 844);
-    phone.style.transform = 'scale(' + s + ')';
-    phone.style.borderRadius = s < 1 ? '0' : '';
+    const dev = document.body.classList.contains('dev');
+    const mobile = matchMedia('(max-width: 760px)').matches;
+    const reset = () => { phone.style.transform = phone.style.clipPath = phone.style.margin = phone.style.transformOrigin = ''; phone.style.setProperty('--cropB', '0px'); };
+    if (dev && !mobile) { reset(); phone.style.borderRadius = ''; return; }
+    document.documentElement.style.overflow = (mobile && !dev) ? 'hidden' : '';   // 只玩遊戲時整頁鎖住，被裁掉的部分不能拖出來
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (!mobile) {                                   // 電腦：完整塞進視窗
+      reset();
+      const s = Math.min(vw / 390, vh / 844);
+      phone.style.transform = 'scale(' + s + ')';
+      phone.style.borderRadius = s < 1 ? '0' : '';
+      return;
+    }
+    // 手機：等比例放大到撐滿整個瀏覽器，多出來的裁掉（至少保留 350 寬、560 高，結算卡片和數字一定看得到）
+    let s = Math.max(vw / 390, vh / 844);
+    s = Math.min(s, vw / 350, vh / 560);
+    const exW = Math.max(0, 390 - vw / s), exH = Math.max(0, 844 - vh / s);
+    const cropL = exW / 2, cropT = Math.min(exH, 110), cropB = exH - cropT;   // 先裁上面的假狀態列／header，剩下才裁下面
+    const offX = Math.max(0, (vw - 390 * s) / 2), offY = Math.max(0, (vh - 844 * s) / 2);
+    phone.style.transformOrigin = '0 0';
+    phone.style.transform = `translate(${(offX - cropL * s).toFixed(1)}px, ${(offY - cropT * s).toFixed(1)}px) scale(${s.toFixed(4)})`;
+    phone.style.clipPath = `inset(${cropT.toFixed(1)}px ${cropL.toFixed(1)}px ${cropB.toFixed(1)}px ${cropL.toFixed(1)}px)`;
+    phone.style.margin = `0 ${vw - 390}px ${(vh - 844).toFixed(1)}px 0`;   // 版面佔位 = 剛好一個螢幕，參數面板接在下面
+    phone.style.borderRadius = '0';
+    phone.style.setProperty('--cropB', cropB.toFixed(1) + 'px');   // 下面被裁掉時，提示文字跟著往上
   };
   const btn = document.createElement('button');
   btn.className = 'panel-toggle';
