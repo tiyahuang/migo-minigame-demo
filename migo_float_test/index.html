@@ -131,12 +131,32 @@
   .game-switch a { padding: 7px 0; width: 32px; text-align: center; border-radius: 999px; color: rgba(255,255,255,.75); text-decoration: none; white-space: nowrap; }
   .game-switch a:hover { color: #fff; }
   .game-switch a.on { background: rgba(255,255,255,.92); color: #1d1a3a; }
+
+  /* AB toggle：白色圓鈕是 ::before，點整顆就滑到另一邊並切換遊戲 */
+  .game-switch { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .game-switch::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: 32px; border-radius: 999px;
+    background: rgba(255,255,255,.92); transition: transform .18s ease; }
+  .game-switch.b::before { transform: translateX(34px); }
+  .game-switch a { position: relative; z-index: 1; transition: color .18s; }
+  .game-switch a.on { background: none; color: #1d1a3a; }
+
+  /* 手機：遊戲滿版，按鈕浮在畫面上，參數面板是蓋在上面的抽屜 */
+  @media (max-width: 760px) {
+    body, body.dev { padding: 0; gap: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+    body.dev .phone { flex: none; transform-origin: center center; }
+    body.dev .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: 100%; max-width: none;
+      max-height: 50vh; max-height: 50dvh; overflow: auto; border-radius: 16px 16px 0 0;
+      background: rgba(20, 34, 56, .9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .game-switch, .panel-toggle { top: 8px; }
+    .game-switch { left: 8px; }
+    .panel-toggle { right: 8px; }
+  }
 </style>
 </head>
 <body>
 
 
-<nav class="game-switch" aria-label="切換遊戲">
+<nav class="game-switch b" aria-label="切換遊戲">
   <a href="../mud_spring_demo/" title="棉石泥漿島的噗噗泉">A</a>
   <a href="../migo_float_test/" class="on" aria-current="page" title="綿綿洞窟的神秘泉水">B</a>
 </nav>
@@ -667,7 +687,7 @@ restart();
 (() => {
   const phone = document.getElementById('phone');
   const fit = () => {
-    if (document.body.classList.contains('dev')) { phone.style.transform = ''; phone.style.borderRadius = ''; return; }
+    if (document.body.classList.contains('dev') && !matchMedia('(max-width: 760px)').matches) { phone.style.transform = ''; phone.style.borderRadius = ''; return; }
     const s = Math.min(window.innerWidth / 390, window.innerHeight / 844);
     phone.style.transform = 'scale(' + s + ')';
     phone.style.borderRadius = s < 1 ? '0' : '';
@@ -693,6 +713,20 @@ restart();
   window.addEventListener('resize', fit);
   window.addEventListener('load', fit);
   setOpen(!new URLSearchParams(location.search).has('play'));   // 預設打開；網址加 ?play 則先收起來
+})();
+</script>
+
+<script>
+// AB toggle：點整顆就切到另一個遊戲（保留 ?play 等網址參數）
+(() => {
+  const nav = document.querySelector('.game-switch');
+  nav.addEventListener('click', e => {
+    e.preventDefault();
+    const other = nav.querySelector('a:not(.on)');
+    nav.querySelectorAll('a').forEach(a => a.classList.toggle('on', a === other));
+    nav.classList.toggle('b', other === nav.querySelectorAll('a')[1]);
+    setTimeout(() => { location.href = other.getAttribute('href') + location.search; }, 180);
+  });
 })();
 </script>
 </body>
